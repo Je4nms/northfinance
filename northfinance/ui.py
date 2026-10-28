@@ -116,6 +116,10 @@ header[data-testid="stHeader"] {{ display: none; }}
 .nf-legend-row .pct {{ color: {c["muted"]}; font-size: 0.85rem; }}
 .nf-legend-row .amount {{ font-weight: 600; min-width: 92px; text-align: right; }}
 
+/* "Está curtindo o app?" */
+.nf-enjoy {{ font-weight: 700; }}
+.nf-enjoy span {{ display: block; font-weight: 400; font-size: 0.85rem; color: {c["muted"]}; }}
+
 /* Meta do mês */
 .nf-goal {{ background: {c["card"]}; border-radius: 16px; padding: 14px 16px; margin-top: 10px; }}
 .nf-goal .top {{ display: flex; justify-content: space-between; font-size: 0.8rem; color: {c["muted"]}; }}
@@ -250,14 +254,8 @@ def category_color(category: str, categories: list[str], theme: str) -> str:
     return OTHER_COLOR[theme]
 
 
-def hero(theme: str, greeting: str, name: str, picture: str | None) -> str:
-    """Topo do Início: faixa com o degradê da marca, foto e saudação grande."""
-    initial = escape((name or "?")[0].upper())
-    avatar = (
-        f'<img class="nf-avatar" src="{escape(picture)}" alt="" referrerpolicy="no-referrer">'
-        if picture
-        else f'<div class="nf-avatar">{initial}</div>'
-    )
+def top_glow(theme: str) -> str:
+    """Brilho com as cores da marca no topo de todas as telas do app (parado, sem animação)."""
     a = PALETTES[theme]["aurora"]
     return f"""<style>
 [data-testid="stAppViewContainer"]::before {{
@@ -269,8 +267,18 @@ def hero(theme: str, greeting: str, name: str, picture: str | None) -> str:
   mask-image: linear-gradient(to bottom, #000 40%, transparent);
 }}
 [data-testid="stMain"] {{ position: relative; z-index: 1; }}
-</style>
-<div class="nf-hero">{avatar}<div class="nf-hello">{escape(greeting)},<br><b>{escape(name)}</b></div></div>"""
+</style>"""
+
+
+def hero(greeting: str, name: str, picture: str | None) -> str:
+    """Topo do Início: faixa com o degradê da marca, foto e saudação grande."""
+    initial = escape((name or "?")[0].upper())
+    avatar = (
+        f'<img class="nf-avatar" src="{escape(picture)}" alt="" referrerpolicy="no-referrer">'
+        if picture
+        else f'<div class="nf-avatar">{initial}</div>'
+    )
+    return f"""<div class="nf-hero">{avatar}<div class="nf-hello">{escape(greeting)},<br><b>{escape(name)}</b></div></div>"""
 
 
 def balance_hero(label: str, balance: str, income: str, expense: str) -> str:

@@ -54,6 +54,8 @@ members = Table(
     Column("joined_at", DateTime(timezone=True), server_default=func.now()),
     # Meta de gastos do mês, em centavos (vazio = sem meta)
     Column("monthly_goal_cents", Integer),
+    # Resposta ao "Está curtindo o app?" (vazio = ainda não respondeu)
+    Column("enjoying", String(20)),
 )
 
 
@@ -77,6 +79,7 @@ def create_tables(engine: Engine) -> None:
     # O create_all não mexe em tabelas existentes, então adicionamos a coluna na mão.
     with engine.begin() as conn:
         conn.execute(text("ALTER TABLE members ADD COLUMN IF NOT EXISTS monthly_goal_cents INTEGER"))
+        conn.execute(text("ALTER TABLE members ADD COLUMN IF NOT EXISTS enjoying VARCHAR(20)"))
 
 
 def _migrate_old_expenses(engine: Engine) -> None:
@@ -227,3 +230,25 @@ def set_goal(engine: Engine, email: str, goal_cents: int | None) -> None:
             {"goal": goal_cents, "email": email},
         )
 
+
+
+def should_ask_enjoying(engine: Engine, email: str, min_transactions: int = 5) -> bool:
+    """Perguntar "Está curtindo?" só para quem já usou um pouco e ainda não respondeu."""
+    with engine.connect() as conn:
+        return bool(conn.execute(
+            text("""
+                SELECT m.enjoying IS NULL
+                   AND (SELECT COUNT(*) FROM transactions t WHERE t.owner = m.email) >= :min_transactions
+                FROM members m
+                WHERE m.email = :email
+            """),
+            {"email": email, "min_transactions": min_transactions},
+        ).scalar())
+
+
+def set_enjoying(engine: Engine, email: str, answer: str) -> None:
+    with engine.begin() as conn:
+        conn.execute(
+            text("UPDATE members SET enjoying = :answer WHERE email = :email"),
+            {"answer": answer, "email": email},
+        )
