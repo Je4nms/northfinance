@@ -227,17 +227,3 @@ def set_goal(engine: Engine, email: str, goal_cents: int | None) -> None:
             {"goal": goal_cents, "email": email},
         )
 
-
-def list_all_transactions(engine: Engine, owner: str) -> list[dict]:
-    """Todos os lançamentos da pessoa, do mais antigo ao mais novo (para a planilha)."""
-    with engine.connect() as conn:
-        rows = conn.execute(
-            text("""
-                SELECT occurred_on, kind, category, description, amount_cents
-                FROM transactions
-                WHERE owner = :owner
-                ORDER BY occurred_on, id
-            """),
-            {"owner": owner},
-        )
-        return [dict(row._mapping) for row in rows]
