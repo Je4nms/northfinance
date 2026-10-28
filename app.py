@@ -4,7 +4,7 @@ Regra de ouro do produto: pouca informação na tela, fácil de entender de prim
 """
 
 import hmac
-from datetime import datetime
+from datetime import datetime, timedelta
 from itertools import groupby
 from pathlib import Path
 from urllib.parse import quote
@@ -129,6 +129,20 @@ def show_transactions(transactions: list[dict], allow_delete: bool) -> None:
                             st.rerun()
 
 
+def goal_editor(goal: int | None) -> None:
+    """Botão que abre o campo da meta ali mesmo, sem sair do Início."""
+    label = "Editar meta" if goal else "Definir uma meta para o mês"
+    with st.popover(label, icon=":material/edit:" if goal else ":material/flag:",
+                    type="tertiary" if goal else "secondary", width="content" if goal else "stretch"):
+        st.caption("Quanto você quer gastar, no máximo, por mês. Deixe em branco para tirar a meta.")
+        with st.form("goal", border=False):
+            value = st.number_input("Meta (R$)", min_value=0.0, step=50.0, format="%.2f",
+                                    value=goal / 100 if goal else None, placeholder="Ex.: 1500,00")
+            if st.form_submit_button("Salvar meta", type="primary", width="stretch"):
+                db.set_goal(engine, owner, to_cents(value) if value else None)
+                st.rerun()
+
+
 def month_navigation() -> None:
     """‹ Outubro de 2026 ›: anda entre os meses (não deixa ir para o futuro)."""
     with st.container(key="month_nav", horizontal=True):
@@ -166,9 +180,11 @@ if tab == "inicio":
             income=fmt(totals[db.INCOME]),
             expense=fmt(totals[db.EXPENSE]),
         ))
-        goal = db.get_goal(engine, owner)
-        if goal and month_offset == 0 and not hide_values:
-            st.html(ui.goal_bar(totals[db.EXPENSE], goal, to_brl))
+        if month_offset == 0 and not hide_values:
+            goal = db.get_goal(engine, owner)
+            if goal:
+                st.html(ui.goal_bar(totals[db.EXPENSE], goal, to_brl))
+            goal_editor(goal)
 
         by_category = db.expenses_by_category(engine, owner, start, end)
         if by_category:
@@ -211,12 +227,36 @@ elif tab == "anotar":
 
 elif tab == "extrato":
     st.subheader("Extrato")
-    month_navigation()
-    transactions = db.list_transactions(engine, owner, start, end)
+    period_mode = st.segmented_control(
+        "Período", ["mes", "datas"], format_func={"mes": "Por mês", "datas": "Escolher datas"}.get,
+        default="mes", required=True, label_visibility="collapsed", key="period_mode",
+    )
+    if period_mode == "mes":
+        month_navigation()
+        period_start, period_end = start, end
+    else:
+        # A pessoa escolhe "de" e "até" no calendário; o mesmo dia duas vezes = só aquele dia
+        chosen = st.date_input("De / até", value=(start, today), max_value=today, format="DD/MM/YYYY")
+        if len(chosen) < 2:
+            st.caption("Toque no último dia do período.")
+            st.stop()
+        period_start, period_end = chosen[0], chosen[1] + timedelta(days=1)
+
+    kind_filter = st.pills(
+        "Tipo", ["todos", db.INCOME, db.EXPENSE],
+        format_func={"todos": "Todos", db.INCOME: "Ganhos", db.EXPENSE: "Gastos"}.get,
+        default="todos", label_visibility="collapsed", key="kind_filter",
+    ) or "todos"
+
+    transactions = db.list_transactions(engine, owner, period_start, period_end)
+    if kind_filter != "todos":
+        transactions = [t for t in transactions if t["kind"] == kind_filter]
     if transactions:
+        total = sum(t["amount_cents"] if t["kind"] == db.INCOME else -t["amount_cents"] for t in transactions)
+        st.caption(f"{len(transactions)} lançamento(s) · saldo do período: {fmt(total)}")
         show_transactions(transactions, allow_delete=True)
     else:
-        st.info("Nenhum lançamento neste mês ainda.")
+        st.info("Nenhum lançamento nesse período.")
 
 elif tab == "menu":
     st.subheader("Menu")
@@ -237,24 +277,6 @@ elif tab == "menu":
             type="primary",
             width="stretch",
         )
-
-    with st.container(border=True):
-        st.markdown("**:material/flag: Meta do mês**")
-        st.caption("Quanto você quer gastar, no máximo, por mês. Aparece no Início.")
-        current_goal = db.get_goal(engine, owner)
-        with st.form("goal", border=False):
-            goal_value = st.number_input(
-                "Meta (R$)",
-                min_value=0.0,
-                step=50.0,
-                format="%.2f",
-                value=current_goal / 100 if current_goal else None,
-                placeholder="Ex.: 1500,00",
-            )
-            if st.form_submit_button("Salvar meta", icon=":material/check:", width="stretch"):
-                # Deixar em branco (ou zero) apaga a meta
-                db.set_goal(engine, owner, to_cents(goal_value) if goal_value else None)
-                st.toast("Meta salva!" if goal_value else "Meta removida.", icon=":material/flag:")
 
     with st.container(border=True):
         st.markdown("**:material/chat: Enviar sugestão**")

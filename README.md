@@ -24,12 +24,12 @@ O `?embed=true` no final esconde os selos do Streamlit Cloud, que ficariam por c
 
 - **Anotar:** gasto ou ganho, com valor, categoria, descrição (opcional) e data.
 - **Início:** quanto sobrou no mês, ganhos, gastos e para onde foi o dinheiro.
-- **Extrato:** os lançamentos do mês separados por dia, com opção de apagar.
+- **Extrato:** lançamentos separados por dia, por mês ou por um período escolhido no calendário, com filtro de ganhos e gastos e opção de apagar.
 - **Barra de navegação embaixo**, como num app de celular.
 - **Login com Google:** cada pessoa vê só os próprios lançamentos. O app nunca vê nem guarda senhas.
 - **Convite por código:** na primeira vez, a pessoa digita o código que recebeu de quem a convidou.
-- **Menu:** convidar pelo WhatsApp (mensagem pronta com link e código), meta do mês, enviar sugestões e ver a Política de Privacidade.
-- **Meta do mês:** a pessoa define quanto quer gastar no máximo, e o Início mostra uma barra (verde, laranja a partir de 80%, vermelha quando passa).
+- **Menu:** convidar pelo WhatsApp (mensagem pronta com link e código), enviar sugestões e ver a Política de Privacidade.
+- **Meta do mês:** a pessoa define no próprio Início quanto quer gastar no máximo, e ele mostra uma barra (verde, laranja a partir de 80%, vermelha quando passa).
 - **No computador**, o Início usa duas colunas: resumo de um lado, últimos lançamentos do outro.
 
 ## Tecnologias
