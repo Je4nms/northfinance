@@ -85,6 +85,37 @@ header[data-testid="stHeader"] {{ display: none; }}
 .nf-footer a {{ color: {c["muted"]}; }}
 
 
+/* Início: topo com foto e saudação */
+.nf-hero {{ display: flex; align-items: center; gap: 14px; }}
+.nf-avatar {{ width: 52px; height: 52px; border-radius: 50%; object-fit: cover; flex: none;
+             background: {GRADIENT}; color: #fff; font-weight: 700; font-size: 1.3rem;
+             display: flex; align-items: center; justify-content: center;
+             box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.15); }}
+.nf-hello {{ font-size: 1.55rem; line-height: 1.15; letter-spacing: -0.4px; }}
+.nf-hello b {{ font-weight: 800; }}
+.st-key-hero_row {{ align-items: center !important; flex-wrap: nowrap !important; }}
+
+/* Navegação entre meses */
+.st-key-month_nav {{ align-items: center !important; justify-content: center !important; flex-wrap: nowrap !important; }}
+.st-key-month_nav p {{ font-weight: 700; }}
+
+/* O número grande do mês */
+.nf-balance {{ margin: 0.25rem 0 0.75rem; }}
+.nf-balance .label {{ font-size: 0.9rem; color: {c["muted"]}; }}
+.nf-balance .value {{ font-size: 2.6rem; font-weight: 800; letter-spacing: -1px; line-height: 1.1; }}
+
+/* Barra única por categoria e legenda */
+.nf-section-title {{ font-weight: 700; margin: 1.25rem 0 0.6rem; }}
+.nf-stack {{ display: flex; gap: 2px; height: 14px; border-radius: 7px; overflow: hidden; }}
+.nf-stack span {{ display: block; min-width: 3px; }}
+.nf-legend {{ margin-top: 0.75rem; }}
+.nf-legend-row {{ display: flex; align-items: center; gap: 10px; padding: 7px 0; border-bottom: 1px solid {c["border"]}; }}
+.nf-legend-row:last-child {{ border-bottom: none; }}
+.nf-legend-row .dot {{ width: 10px; height: 10px; border-radius: 50%; flex: none; }}
+.nf-legend-row .name {{ flex: 1; }}
+.nf-legend-row .pct {{ color: {c["muted"]}; font-size: 0.85rem; }}
+.nf-legend-row .amount {{ font-weight: 600; min-width: 92px; text-align: right; }}
+
 /* Meta do mês */
 .nf-goal {{ background: {c["card"]}; border-radius: 16px; padding: 14px 16px; margin-top: 10px; }}
 .nf-goal .top {{ display: flex; justify-content: space-between; font-size: 0.8rem; color: {c["muted"]}; }}
@@ -99,7 +130,7 @@ header[data-testid="stHeader"] {{ display: none; }}
 
 /* Cartões de ganhos, gastos e saldo */
 .nf-cards {{ display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }}
-.nf-card {{ background: {c["card"]}; border-radius: 16px; padding: 14px 16px; }}
+.nf-card {{ background: {c["card"]}; border-radius: 20px; padding: 14px 16px; }}
 .nf-card .label {{ font-size: 0.8rem; color: {c["muted"]}; }}
 .nf-card .value {{ font-size: 1.2rem; font-weight: 700; }}
 .nf-card.balance {{ grid-column: span 2; background: {GRADIENT}; color: #fff; }}
@@ -200,6 +231,77 @@ def aurora(theme: str) -> str:
 
 def privacy_link() -> str:
     return '<p class="nf-footer"><a href="?pagina=privacidade" target="_blank">Política de Privacidade</a></p>'
+
+
+# Cor fixa para cada categoria de gasto, na ordem da lista CATEGORIES.
+# A cor segue a categoria (não a posição no ranking), então Mercado é sempre azul.
+# "Outros" e categorias desconhecidas ficam cinza.
+CATEGORY_COLORS = {
+    "light": ["#2a78d6", "#eb6834", "#1baf7a", "#eda100", "#e87ba4"],
+    "dark": ["#3987e5", "#d95926", "#199e70", "#c98500", "#d55181"],
+}
+OTHER_COLOR = {"light": "#98a2b3", "dark": "#667085"}
+
+
+def category_color(category: str, categories: list[str], theme: str) -> str:
+    colors = CATEGORY_COLORS[theme]
+    if category in categories and categories.index(category) < len(colors) and not category.endswith("Outros"):
+        return colors[categories.index(category)]
+    return OTHER_COLOR[theme]
+
+
+def hero(theme: str, greeting: str, name: str, picture: str | None) -> str:
+    """Topo do Início: faixa com o degradê da marca, foto e saudação grande."""
+    initial = escape((name or "?")[0].upper())
+    avatar = (
+        f'<img class="nf-avatar" src="{escape(picture)}" alt="" referrerpolicy="no-referrer">'
+        if picture
+        else f'<div class="nf-avatar">{initial}</div>'
+    )
+    a = PALETTES[theme]["aurora"]
+    return f"""<style>
+[data-testid="stAppViewContainer"]::before {{
+  content: ""; position: absolute; top: 0; left: 0; right: 0; height: 340px; z-index: 0; pointer-events: none;
+  background:
+    radial-gradient(closest-side, rgba(30, 79, 214, {a}), transparent) 10% 0% / 70% 120% no-repeat,
+    radial-gradient(closest-side, rgba(34, 197, 94, {a}), transparent) 90% 10% / 70% 120% no-repeat;
+  -webkit-mask-image: linear-gradient(to bottom, #000 40%, transparent);
+  mask-image: linear-gradient(to bottom, #000 40%, transparent);
+}}
+[data-testid="stMain"] {{ position: relative; z-index: 1; }}
+</style>
+<div class="nf-hero">{avatar}<div class="nf-hello">{escape(greeting)},<br><b>{escape(name)}</b></div></div>"""
+
+
+def balance_hero(label: str, balance: str, income: str, expense: str) -> str:
+    """O número grande do mês (o que sobrou) e, embaixo, ganhos e gastos."""
+    return f"""
+<div class="nf-balance">
+  <div class="label">{escape(label)}</div>
+  <div class="value">{balance}</div>
+</div>
+<div class="nf-cards">
+  <div class="nf-card"><div class="label">Ganhos</div><div class="value income">{income}</div></div>
+  <div class="nf-card"><div class="label">Gastos</div><div class="value expense">{expense}</div></div>
+</div>"""
+
+
+def category_breakdown(rows: list[dict], total: int, categories: list[str], theme: str, fmt) -> str:
+    """Uma barra só, dividida por cor de categoria, e a legenda com os valores."""
+    segments = "".join(
+        f'<span style="flex: {r["total_cents"]}; background: {category_color(r["category"], categories, theme)}"></span>'
+        for r in rows
+    )
+    legend = "".join(
+        f"""<div class="nf-legend-row">
+  <span class="dot" style="background: {category_color(r["category"], categories, theme)}"></span>
+  <span class="name">{escape(split_category(r["category"])[1])}</span>
+  <span class="pct">{r["total_cents"] / total:.0%}</span>
+  <span class="amount">{fmt(r["total_cents"])}</span>
+</div>"""
+        for r in rows
+    )
+    return f'<div class="nf-section-title">Para onde foi o dinheiro</div><div class="nf-stack">{segments}</div><div class="nf-legend">{legend}</div>'
 
 
 def summary_cards(income: str, expense: str, balance: str) -> str:
