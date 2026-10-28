@@ -44,6 +44,17 @@ transactions = Table(
 )
 
 
+# Quem já entrou com o código de convite. Fica guardado o e-mail do Google,
+# então nas próximas vezes a pessoa entra direto.
+members = Table(
+    "members",
+    metadata,
+    Column("email", String(254), primary_key=True),
+    Column("name", String(200)),
+    Column("joined_at", DateTime(timezone=True), server_default=func.now()),
+)
+
+
 def create_tables(engine: Engine) -> None:
     """Cria a tabela na primeira vez que o app roda. Se ela já existe, não faz nada."""
     metadata.create_all(engine)
@@ -148,4 +159,27 @@ def delete_transaction(engine: Engine, owner: str, transaction_id: int) -> None:
         conn.execute(
             text("DELETE FROM transactions WHERE id = :id AND owner = :owner"),
             {"id": transaction_id, "owner": owner},
+        )
+
+
+def is_member(engine: Engine, email: str) -> bool:
+    """Essa pessoa já entrou com o código de convite alguma vez?"""
+    with engine.connect() as conn:
+        row = conn.execute(
+            text("SELECT 1 FROM members WHERE email = :email"),
+            {"email": email},
+        ).first()
+        return row is not None
+
+
+def add_member(engine: Engine, email: str, name: str | None) -> None:
+    """Guarda a pessoa como convidada. Se ela já estiver na lista, não faz nada."""
+    with engine.begin() as conn:
+        conn.execute(
+            text("""
+                INSERT INTO members (email, name)
+                VALUES (:email, :name)
+                ON CONFLICT (email) DO NOTHING
+            """),
+            {"email": email, "name": name},
         )

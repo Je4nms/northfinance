@@ -6,7 +6,7 @@
 
 Eu usava um app de finanças com informação demais na tela, confuso e difícil de entender. O NorthFinance é a versão que eu queria usar: **anotar um gasto em segundos** e ver **para onde o dinheiro está indo**, sem bagunça.
 
-🚧 **Em construção.** Versão atual: anotar ganhos e gastos, resumo do mês e extrato, com visual de app no celular (claro ou escuro, conforme o aparelho). Próximo passo: login com Google, para família e amigos usarem.
+🚧 **Em construção.** Versão atual: login com Google, convite por código, anotar ganhos e gastos, resumo do mês e extrato, com visual de app no celular (claro ou escuro, conforme o aparelho).
 
 ## Como usar no celular
 
@@ -26,6 +26,8 @@ O `?embed=true` no final esconde os selos do Streamlit Cloud, que ficariam por c
 - **Início:** quanto sobrou no mês, ganhos, gastos e para onde foi o dinheiro.
 - **Extrato:** os lançamentos do mês separados por dia, com opção de apagar.
 - **Barra de navegação embaixo**, como num app de celular.
+- **Login com Google:** cada pessoa vê só os próprios lançamentos. O app nunca vê nem guarda senhas.
+- **Convite por código:** na primeira vez, a pessoa digita o código que recebeu de quem a convidou.
 
 ## Tecnologias
 
@@ -35,6 +37,7 @@ O `?embed=true` no final esconde os selos do Streamlit Cloud, que ficariam por c
 | Streamlit | Transforma o código Python em site, que funciona no celular |
 | PostgreSQL (Neon) | Banco de dados online onde os gastos ficam salvos |
 | SQLAlchemy + SQL | Conversa com o banco de dados |
+| Login do Streamlit (OpenID Connect) | Entrar com a conta Google |
 
 ## Como rodar
 

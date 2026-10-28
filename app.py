@@ -6,6 +6,7 @@ Regra de ouro do produto: pouca informação na tela, fácil de entender de prim
 import hmac
 from datetime import datetime
 from itertools import groupby
+from pathlib import Path
 from zoneinfo import ZoneInfo
 
 import streamlit as st
@@ -19,18 +20,23 @@ st.set_page_config(page_title="NorthFinance", page_icon="assets/icon.png")
 st.html(ui.styles(st.context.theme.type or "light"))
 
 
-# --- Entrada ---
-# Enquanto o login com Google não chega (sessão 2), uma senha simples
-# impede que qualquer pessoa com o link veja os lançamentos.
-if not st.session_state.get("unlocked"):
+PRIVACY_POLICY = Path(__file__).parent / "northfinance" / "privacy.md"
+
+# --- Política de Privacidade: aberta para qualquer pessoa, sem login ---
+# Endereço: .../?pagina=privacidade (o Google exige essa página para liberar o login)
+if st.query_params.get("pagina") == "privacidade":
+    st.html(ui.brand())
+    st.markdown(PRIVACY_POLICY.read_text())
+    st.stop()
+
+
+# --- Entrada: login com Google ---
+# Quem confere a identidade é o Google: o app nunca vê nem guarda senha de ninguém.
+if not st.user.is_logged_in:
     st.html(ui.welcome())
-    with st.form("login", border=False):
-        password = st.text_input("Senha", type="password", placeholder="Digite a sua senha")
-        if st.form_submit_button("Entrar", type="primary", width="stretch"):
-            if hmac.compare_digest(password, st.secrets["app_password"]):
-                st.session_state.unlocked = True
-                st.rerun()
-            st.error("Senha errada.")
+    if st.button("Entrar com Google", icon=":material/login:", type="primary", width="stretch"):
+        st.login()
+    st.html(ui.privacy_link())
     st.stop()
 
 
@@ -48,7 +54,26 @@ def get_engine():
 
 
 engine = get_engine()
-owner = st.secrets["owner"]
+# Cada lançamento é guardado com o e-mail do Google de quem anotou
+owner = st.user.email.lower()
+
+# --- Primeira vez: código de convite ---
+# Por enquanto o app é só para convidados. Quem tem o código entra uma vez
+# e o e-mail fica guardado na tabela "members"; nas próximas, entra direto.
+if not db.is_member(engine, owner):
+    st.html(ui.welcome())
+    st.markdown(f"Olá, **{st.user.name or owner}**! Falta só uma coisa: o **código de convite**.")
+    with st.form("invite", border=False):
+        code = st.text_input("Código de convite", placeholder="Ex.: NORTE2026")
+        if st.form_submit_button("Continuar", type="primary", width="stretch"):
+            if hmac.compare_digest(code.strip().upper(), st.secrets["invite_code"].strip().upper()):
+                db.add_member(engine, owner, st.user.name)
+                st.rerun()
+            st.error("Código errado. Peça o código para quem te convidou.")
+    if st.button("Entrar com outra conta", icon=":material/switch_account:", type="tertiary"):
+        st.logout()
+    st.stop()
+
 today = datetime.now(ZoneInfo("America/Sao_Paulo")).date()
 start, end = month_range(today)
 
@@ -148,9 +173,9 @@ elif tab == "menu":
         "O app de finanças mais simples que existe: anote o que entra e o que sai, "
         "e veja para onde o dinheiro está indo."
     )
+    st.caption(f"Conectado como **{st.user.name or owner}** ({owner})")
     if st.button("Sair", icon=":material/logout:", width="stretch"):
-        st.session_state.clear()
-        st.rerun()
+        st.logout()
 
 # --- Barra de navegação embaixo ---
 with st.container(key="bottom_nav", horizontal=True):
