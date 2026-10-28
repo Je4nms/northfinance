@@ -45,6 +45,7 @@ PALETTES = {
         "income": "#15803d",
         "expense": "#d92d20",
         "aurora": 0.45,
+        "warning": "#b54708",
     },
     "dark": {
         "surface": "#0e1117",
@@ -54,6 +55,7 @@ PALETTES = {
         "income": "#4ade80",
         "expense": "#f97066",
         "aurora": 0.55,
+        "warning": "#fdb022",
     },
 }
 GRADIENT = "linear-gradient(45deg, #1e4fd6, #22c55e)"
@@ -82,6 +84,18 @@ header[data-testid="stHeader"] {{ display: none; }}
 .nf-footer {{ text-align: center; font-size: 0.8rem; margin-top: 1rem; }}
 .nf-footer a {{ color: {c["muted"]}; }}
 
+
+/* Meta do mês */
+.nf-goal {{ background: {c["card"]}; border-radius: 16px; padding: 14px 16px; margin-top: 10px; }}
+.nf-goal .top {{ display: flex; justify-content: space-between; font-size: 0.8rem; color: {c["muted"]}; }}
+.nf-goal .track {{ height: 8px; border-radius: 4px; background: {c["border"]}; margin: 8px 0 6px; overflow: hidden; }}
+.nf-goal .fill {{ height: 100%; border-radius: 4px; }}
+.nf-goal .fill.ok {{ background: {c["income"]}; }}
+.nf-goal .fill.warning {{ background: {c["warning"]}; }}
+.nf-goal .fill.over {{ background: {c["expense"]}; }}
+.nf-goal .note {{ font-size: 0.85rem; font-weight: 600; }}
+.nf-goal .note.warning {{ color: {c["warning"]}; }}
+.nf-goal .note.over {{ color: {c["expense"]}; }}
 
 /* Cartões de ganhos, gastos e saldo */
 .nf-cards {{ display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }}
@@ -194,6 +208,22 @@ def summary_cards(income: str, expense: str, balance: str) -> str:
   <div class="nf-card balance"><div class="label">Sobrou no mês</div><div class="value">{balance}</div></div>
   <div class="nf-card"><div class="label">Ganhos do mês</div><div class="value income">{income}</div></div>
   <div class="nf-card"><div class="label">Gastos do mês</div><div class="value expense">{expense}</div></div>
+</div>"""
+
+
+def goal_bar(spent: int, goal: int, to_brl) -> str:
+    """Barra da meta do mês: verde até 80%, laranja até 100%, vermelha quando passa."""
+    share = spent / goal
+    status = "ok" if share < 0.8 else "warning" if share <= 1 else "over"
+    if share <= 1:
+        note = f"Faltam {to_brl(goal - spent)}"
+    else:
+        note = f"Passou {to_brl(spent - goal)} da meta"
+    return f"""
+<div class="nf-goal">
+  <div class="top"><span>Meta do mês</span><span>{to_brl(spent)} de {to_brl(goal)} ({share:.0%})</span></div>
+  <div class="track"><div class="fill {status}" style="width: {min(share, 1) * 100:.0f}%"></div></div>
+  <div class="note {status}">{note}</div>
 </div>"""
 
 
