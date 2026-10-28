@@ -23,7 +23,7 @@ st.html(ui.styles(st.context.theme.type or "light"))
 
 PRIVACY_POLICY = Path(__file__).parent / "northfinance" / "privacy.md"
 # Endereço que vai nos convites. O "?embed=true" esconde os selos do Streamlit Cloud.
-APP_URL = "https://northfinance-je4nms.streamlit.app/?embed=true"
+APP_URL = "https://northfinancebr.streamlit.app/?embed=true"
 
 # --- Política de Privacidade: aberta para qualquer pessoa, sem login ---
 # Endereço: .../?pagina=privacidade (o Google exige essa página para liberar o login)

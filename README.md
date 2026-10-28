@@ -10,7 +10,7 @@ Eu usava um app de finanças com informação demais na tela, confuso e difícil
 
 ## Como usar no celular
 
-Abra **<https://northfinance-je4nms.streamlit.app/?embed=true>** e adicione à tela inicial:
+Abra **<https://northfinancebr.streamlit.app/?embed=true>** e adicione à tela inicial:
 - **iPhone (Safari):** Compartilhar → Adicionar à Tela de Início.
 - **Android (Chrome):** menu ⋮ → Adicionar à tela inicial.
 
