@@ -155,16 +155,36 @@ def month_navigation() -> None:
 
 # --- Telas ---
 theme = st.context.theme.type or "light"
-if tab not in ("anotar", "inicio"):
+st.html(ui.top_glow(theme))
+if tab != "inicio":
     st.html(ui.brand())
 
 if tab == "inicio":
     first_name = (st.user.name or owner).split()[0]
     with st.container(key="hero_row", horizontal=True):
-        st.html(ui.hero(theme, greeting(now.hour), first_name, st.user.get("picture")))
+        st.html(ui.hero(greeting(now.hour), first_name, st.user.get("picture")))
         st.button("", icon=":material/visibility_off:" if hide_values else ":material/visibility:",
                   key="toggle_values", on_click=toggle_values,
                   help="Mostrar valores" if hide_values else "Esconder valores")
+
+    # "Está curtindo o app?": aparece uma vez só, para quem já anotou 5 lançamentos
+    if db.should_ask_enjoying(engine, owner):
+        with st.container(border=True, key="enjoy_card"):
+            st.html('<div class="nf-enjoy">Está curtindo o NorthFinance?'
+                    '<span>A sua opinião ajuda a deixar o app melhor.</span></div>')
+            with st.container(horizontal=True):
+                if st.button("Sim! 😍", type="primary"):
+                    db.set_enjoying(engine, owner, "sim")
+                    st.session_state.tab = "menu"
+                    st.toast("Que bom! Que tal convidar um amigo?", icon=":material/favorite:")
+                    st.rerun()
+                if st.button("Tenho uma sugestão"):
+                    db.set_enjoying(engine, owner, "sugestao")
+                    st.session_state.tab = "menu"
+                    st.rerun()
+                if st.button("Agora não", type="tertiary"):
+                    db.set_enjoying(engine, owner, "agora_nao")
+                    st.rerun()
 
     # No PC, duas colunas: resumo à esquerda e últimos lançamentos à direita.
     # No celular, o Streamlit empilha as colunas, uma embaixo da outra.
