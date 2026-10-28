@@ -52,6 +52,8 @@ members = Table(
     Column("email", String(254), primary_key=True),
     Column("name", String(200)),
     Column("joined_at", DateTime(timezone=True), server_default=func.now()),
+    # Meta de gastos do mês, em centavos (vazio = sem meta)
+    Column("monthly_goal_cents", Integer),
 )
 
 
@@ -71,6 +73,10 @@ def create_tables(engine: Engine) -> None:
     """Cria a tabela na primeira vez que o app roda. Se ela já existe, não faz nada."""
     metadata.create_all(engine)
     _migrate_old_expenses(engine)
+    # Migração: a coluna da meta chegou depois que a tabela members já existia.
+    # O create_all não mexe em tabelas existentes, então adicionamos a coluna na mão.
+    with engine.begin() as conn:
+        conn.execute(text("ALTER TABLE members ADD COLUMN IF NOT EXISTS monthly_goal_cents INTEGER"))
 
 
 def _migrate_old_expenses(engine: Engine) -> None:
@@ -203,3 +209,35 @@ def add_feedback(engine: Engine, email: str, message: str) -> None:
             text("INSERT INTO feedback (email, message) VALUES (:email, :message)"),
             {"email": email, "message": message},
         )
+
+
+def get_goal(engine: Engine, email: str) -> int | None:
+    """Meta de gastos do mês da pessoa, em centavos. None se ela não definiu."""
+    with engine.connect() as conn:
+        return conn.execute(
+            text("SELECT monthly_goal_cents FROM members WHERE email = :email"),
+            {"email": email},
+        ).scalar()
+
+
+def set_goal(engine: Engine, email: str, goal_cents: int | None) -> None:
+    with engine.begin() as conn:
+        conn.execute(
+            text("UPDATE members SET monthly_goal_cents = :goal WHERE email = :email"),
+            {"goal": goal_cents, "email": email},
+        )
+
+
+def list_all_transactions(engine: Engine, owner: str) -> list[dict]:
+    """Todos os lançamentos da pessoa, do mais antigo ao mais novo (para a planilha)."""
+    with engine.connect() as conn:
+        rows = conn.execute(
+            text("""
+                SELECT occurred_on, kind, category, description, amount_cents
+                FROM transactions
+                WHERE owner = :owner
+                ORDER BY occurred_on, id
+            """),
+            {"owner": owner},
+        )
+        return [dict(row._mapping) for row in rows]
