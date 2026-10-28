@@ -8,6 +8,14 @@ Eu usava um app de finanças com informação demais na tela, confuso e difícil
 
 🚧 **Em construção.** Versão atual: anotar ganhos e gastos, resumo do mês e extrato, com visual de app no celular (claro ou escuro, conforme o aparelho). Próximo passo: login com Google, para família e amigos usarem.
 
+## Como usar no celular
+
+Abra **<https://northfinance-je4nms.streamlit.app/?embed=true>** e adicione à tela inicial:
+- **iPhone (Safari):** Compartilhar → Adicionar à Tela de Início.
+- **Android (Chrome):** menu ⋮ → Adicionar à tela inicial.
+
+O `?embed=true` no final esconde os selos do Streamlit Cloud, que ficariam por cima da barra de navegação.
+
 ## Regra de ouro
 
 **Pouca informação na tela, fácil de entender de primeira.** Toda função nova precisa deixar o app mais simples, não mais bagunçado.
