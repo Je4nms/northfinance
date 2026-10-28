@@ -55,6 +55,9 @@ header[data-testid="stHeader"] {{ display: none; }}
 .nf-welcome h1 {{ font-size: 1.8rem; margin: 0; padding: 0; letter-spacing: -0.5px; }}
 .nf-welcome p {{ color: {c["muted"]}; margin: 0; }}
 
+.nf-footer {{ text-align: center; font-size: 0.8rem; margin-top: 1rem; }}
+.nf-footer a {{ color: {c["muted"]}; }}
+
 /* Cartões de ganhos, gastos e saldo */
 .nf-cards {{ display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }}
 .nf-card {{ background: {c["card"]}; border-radius: 16px; padding: 14px 16px; }}
@@ -116,6 +119,10 @@ def welcome() -> str:
   <h1><b>North</b>Finance</h1>
   <p>O app de finanças mais simples que existe.</p>
 </div>"""
+
+
+def privacy_link() -> str:
+    return '<p class="nf-footer"><a href="?pagina=privacidade" target="_blank">Política de Privacidade</a></p>'
 
 
 def summary_cards(income: str, expense: str, balance: str) -> str:

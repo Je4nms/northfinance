@@ -6,6 +6,7 @@ Regra de ouro do produto: pouca informação na tela, fácil de entender de prim
 import hmac
 from datetime import datetime
 from itertools import groupby
+from pathlib import Path
 from zoneinfo import ZoneInfo
 
 import streamlit as st
@@ -19,12 +20,23 @@ st.set_page_config(page_title="NorthFinance", page_icon="assets/icon.png")
 st.html(ui.styles(st.context.theme.type or "light"))
 
 
+PRIVACY_POLICY = Path(__file__).parent / "northfinance" / "privacy.md"
+
+# --- Política de Privacidade: aberta para qualquer pessoa, sem login ---
+# Endereço: .../?pagina=privacidade (o Google exige essa página para liberar o login)
+if st.query_params.get("pagina") == "privacidade":
+    st.html(ui.brand())
+    st.markdown(PRIVACY_POLICY.read_text())
+    st.stop()
+
+
 # --- Entrada: login com Google ---
 # Quem confere a identidade é o Google: o app nunca vê nem guarda senha de ninguém.
 if not st.user.is_logged_in:
     st.html(ui.welcome())
     if st.button("Entrar com Google", icon=":material/login:", type="primary", width="stretch"):
         st.login()
+    st.html(ui.privacy_link())
     st.stop()
 
 
