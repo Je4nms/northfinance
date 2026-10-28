@@ -16,25 +16,30 @@ from sqlalchemy import (
     String,
     Table,
     func,
+    inspect,
     text,
 )
 
+EXPENSE = "expense"
+INCOME = "income"
+
 metadata = MetaData()
 
-# Cada linha é um gasto. O "owner" diz de quem é o gasto: cada pessoa só
-# enxerga as linhas com o próprio nome, e é isso que vai permitir a família
-# e os amigos usarem o mesmo app.
-expenses = Table(
-    "expenses",
+# Cada linha é um lançamento: um gasto ou um ganho.
+# O "owner" diz de quem é: cada pessoa só enxerga as próprias linhas,
+# e é isso que vai permitir a família e os amigos usarem o mesmo app.
+transactions = Table(
+    "transactions",
     metadata,
     Column("id", Integer, primary_key=True),
     Column("owner", String(254), nullable=False, index=True),
+    Column("kind", String(10), nullable=False),  # "expense" (gasto) ou "income" (ganho)
     # Guardamos em centavos (número inteiro): R$ 12,50 vira 1250.
     # Número com vírgula no computador às vezes dá diferença de centavos.
     Column("amount_cents", Integer, nullable=False),
     Column("category", String(40), nullable=False),
     Column("description", String(100)),
-    Column("spent_on", Date, nullable=False),
+    Column("occurred_on", Date, nullable=False),
     Column("created_at", DateTime(timezone=True), server_default=func.now()),
 )
 
@@ -42,55 +47,93 @@ expenses = Table(
 def create_tables(engine: Engine) -> None:
     """Cria a tabela na primeira vez que o app roda. Se ela já existe, não faz nada."""
     metadata.create_all(engine)
+    _migrate_old_expenses(engine)
 
 
-def add_expense(
+def _migrate_old_expenses(engine: Engine) -> None:
+    """Migração: a primeira versão guardava só gastos, numa tabela "expenses".
+
+    Se ela ainda existir, copiamos tudo para "transactions" como gasto
+    e apagamos a tabela antiga. Isso acontece uma vez só.
+    """
+    if not inspect(engine).has_table("expenses"):
+        return
+    with engine.begin() as conn:
+        conn.execute(text("""
+            INSERT INTO transactions (owner, kind, amount_cents, category, description, occurred_on, created_at)
+            SELECT owner, 'expense', amount_cents, category, description, spent_on, created_at
+            FROM expenses
+        """))
+        conn.execute(text("DROP TABLE expenses"))
+
+
+def add_transaction(
     engine: Engine,
     owner: str,
+    kind: str,
     amount_cents: int,
     category: str,
     description: str | None,
-    spent_on: date,
+    occurred_on: date,
 ) -> None:
     with engine.begin() as conn:
         conn.execute(
             text("""
-                INSERT INTO expenses (owner, amount_cents, category, description, spent_on)
-                VALUES (:owner, :amount_cents, :category, :description, :spent_on)
+                INSERT INTO transactions (owner, kind, amount_cents, category, description, occurred_on)
+                VALUES (:owner, :kind, :amount_cents, :category, :description, :occurred_on)
             """),
             {
                 "owner": owner,
+                "kind": kind,
                 "amount_cents": amount_cents,
                 "category": category,
                 "description": description or None,
-                "spent_on": spent_on,
+                "occurred_on": occurred_on,
             },
         )
 
 
-def list_expenses(engine: Engine, owner: str, start: date, end: date) -> list[dict]:
-    """Gastos da pessoa entre `start` (incluído) e `end` (não incluído), do mais novo ao mais antigo."""
+def list_transactions(engine: Engine, owner: str, start: date, end: date) -> list[dict]:
+    """Lançamentos entre `start` (incluído) e `end` (não incluído), do mais novo ao mais antigo."""
     with engine.connect() as conn:
         rows = conn.execute(
             text("""
-                SELECT id, amount_cents, category, description, spent_on
-                FROM expenses
-                WHERE owner = :owner AND spent_on >= :start AND spent_on < :end
-                ORDER BY spent_on DESC, id DESC
+                SELECT id, kind, amount_cents, category, description, occurred_on
+                FROM transactions
+                WHERE owner = :owner AND occurred_on >= :start AND occurred_on < :end
+                ORDER BY occurred_on DESC, id DESC
             """),
             {"owner": owner, "start": start, "end": end},
         )
         return [dict(row._mapping) for row in rows]
 
 
-def totals_by_category(engine: Engine, owner: str, start: date, end: date) -> list[dict]:
-    """Quanto a pessoa gastou em cada categoria no período, da maior para a menor."""
+def month_totals(engine: Engine, owner: str, start: date, end: date) -> dict[str, int]:
+    """Total de ganhos e de gastos no período: {"income": ..., "expense": ...}."""
+    with engine.connect() as conn:
+        rows = conn.execute(
+            text("""
+                SELECT kind, SUM(amount_cents) AS total_cents
+                FROM transactions
+                WHERE owner = :owner AND occurred_on >= :start AND occurred_on < :end
+                GROUP BY kind
+            """),
+            {"owner": owner, "start": start, "end": end},
+        )
+        totals = {INCOME: 0, EXPENSE: 0}
+        totals.update({row.kind: row.total_cents for row in rows})
+        return totals
+
+
+def expenses_by_category(engine: Engine, owner: str, start: date, end: date) -> list[dict]:
+    """Quanto foi gasto em cada categoria no período, da maior para a menor."""
     with engine.connect() as conn:
         rows = conn.execute(
             text("""
                 SELECT category, SUM(amount_cents) AS total_cents
-                FROM expenses
-                WHERE owner = :owner AND spent_on >= :start AND spent_on < :end
+                FROM transactions
+                WHERE owner = :owner AND kind = 'expense'
+                  AND occurred_on >= :start AND occurred_on < :end
                 GROUP BY category
                 ORDER BY total_cents DESC
             """),
@@ -99,10 +142,10 @@ def totals_by_category(engine: Engine, owner: str, start: date, end: date) -> li
         return [dict(row._mapping) for row in rows]
 
 
-def delete_expense(engine: Engine, owner: str, expense_id: int) -> None:
-    """Apaga um gasto. O "owner" no WHERE garante que ninguém apaga o gasto de outra pessoa."""
+def delete_transaction(engine: Engine, owner: str, transaction_id: int) -> None:
+    """Apaga um lançamento. O "owner" no WHERE garante que ninguém apaga o de outra pessoa."""
     with engine.begin() as conn:
         conn.execute(
-            text("DELETE FROM expenses WHERE id = :id AND owner = :owner"),
-            {"id": expense_id, "owner": owner},
+            text("DELETE FROM transactions WHERE id = :id AND owner = :owner"),
+            {"id": transaction_id, "owner": owner},
         )
