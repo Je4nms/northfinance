@@ -1,26 +1,106 @@
 @import "tailwindcss";
 
+/* Cores do app: as mesmas da versão 1. O app segue o tema (claro/escuro) do celular. */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --bg: #ffffff;
+  --fg: #101828;
+  --card: #f3f5f7;
+  --border: #e4e7eb;
+  --muted: #667085;
+  --income: #15803d;
+  --expense: #d92d20;
+  --warning: #b54708;
+  --primary: #1f8f63;
+  --glow: 0.45;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --bg: #0e1117;
+    --fg: #f0f2f5;
+    --card: #1a1e26;
+    --border: #2a303b;
+    --muted: #98a2b3;
+    --income: #4ade80;
+    --expense: #f97066;
+    --warning: #fdb022;
+    --primary: #22a06b;
+    --glow: 0.55;
   }
 }
 
+@theme inline {
+  --color-bg: var(--bg);
+  --color-fg: var(--fg);
+  --color-card: var(--card);
+  --color-line: var(--border);
+  --color-muted: var(--muted);
+  --color-income: var(--income);
+  --color-expense: var(--expense);
+  --color-warning: var(--warning);
+  --color-primary: var(--primary);
+  --font-sans: var(--font-source-sans), system-ui, sans-serif;
+}
+
+html {
+  background: var(--bg);
+  color: var(--fg);
+  -webkit-tap-highlight-color: transparent;
+}
+
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  min-height: 100dvh;
+}
+
+/* Brilho azul e verde no topo das telas do app (parado) */
+.nf-glow::before {
+  content: "";
+  position: fixed;
+  inset: 0 0 auto 0;
+  height: 340px;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(closest-side, rgb(30 79 214 / var(--glow)), transparent) 10% 0% / 70% 120% no-repeat,
+    radial-gradient(closest-side, rgb(34 197 94 / var(--glow)), transparent) 90% 10% / 70% 120% no-repeat;
+  mask-image: linear-gradient(to bottom, #000 40%, transparent);
+}
+
+/* Fundo "aurora" da tela de entrada: luzes se mexendo devagar */
+.nf-aurora::before {
+  content: "";
+  position: fixed;
+  inset: -20vmax;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(closest-side, rgb(30 79 214 / var(--glow)), transparent) 15% 10% / 75vmax 75vmax no-repeat,
+    radial-gradient(closest-side, rgb(34 197 94 / var(--glow)), transparent) 85% 90% / 85vmax 85vmax no-repeat,
+    radial-gradient(closest-side, rgb(20 184 166 / calc(var(--glow) * 0.7)), transparent) 60% 55% / 55vmax 55vmax no-repeat;
+  animation: nf-aurora 18s ease-in-out infinite alternate;
+}
+
+@keyframes nf-aurora {
+  0% { transform: translate(0, 0) rotate(0deg) scale(1); }
+  50% { transform: translate(6vmax, 4vmax) rotate(8deg) scale(1.08); }
+  100% { transform: translate(-5vmax, 7vmax) rotate(-6deg) scale(0.96); }
+}
+
+/* O marcador do norte da logo dá uma volta e para no norte */
+.nf-needle {
+  transform-box: view-box;
+  transform-origin: 100px 104px;
+  animation: nf-find-north 1.6s cubic-bezier(0.2, 0.8, 0.2, 1) 0.2s both;
+}
+
+@keyframes nf-find-north {
+  from { transform: rotate(-300deg); }
+  to { transform: rotate(0deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nf-aurora::before,
+  .nf-needle {
+    animation: none;
+  }
 }
