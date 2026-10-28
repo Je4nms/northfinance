@@ -1,2 +1,10 @@
-[theme]
-primaryColor = "#2a78d6"
+# Um tema para o modo claro e outro para o escuro:
+# o app segue a configuração do celular de cada pessoa.
+[theme.light]
+primaryColor = "#1f8f63"
+
+[theme.dark]
+primaryColor = "#22a06b"
+
+[client]
+toolbarMode = "minimal"

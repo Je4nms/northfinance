@@ -30,3 +30,12 @@ def month_range(day: date) -> tuple[date, date]:
     start = day.replace(day=1)
     end = date(start.year + start.month // 12, start.month % 12 + 1, 1)
     return start, end
+
+
+def day_label(day: date, today: date) -> str:
+    """Rótulo do dia no extrato: "Hoje", "Ontem" ou "25 de outubro"."""
+    if day == today:
+        return "Hoje"
+    if (today - day).days == 1:
+        return "Ontem"
+    return f"{day.day} de {MONTHS[day.month - 1]}"
