@@ -55,6 +55,18 @@ members = Table(
 )
 
 
+# Sugestões e problemas que as pessoas mandam pelo Menu.
+# Para ler: SELECT * FROM feedback ORDER BY created_at DESC;
+feedback = Table(
+    "feedback",
+    metadata,
+    Column("id", Integer, primary_key=True),
+    Column("email", String(254), nullable=False),
+    Column("message", String(1000), nullable=False),
+    Column("created_at", DateTime(timezone=True), server_default=func.now()),
+)
+
+
 def create_tables(engine: Engine) -> None:
     """Cria a tabela na primeira vez que o app roda. Se ela já existe, não faz nada."""
     metadata.create_all(engine)
@@ -182,4 +194,12 @@ def add_member(engine: Engine, email: str, name: str | None) -> None:
                 ON CONFLICT (email) DO NOTHING
             """),
             {"email": email, "name": name},
+        )
+
+
+def add_feedback(engine: Engine, email: str, message: str) -> None:
+    with engine.begin() as conn:
+        conn.execute(
+            text("INSERT INTO feedback (email, message) VALUES (:email, :message)"),
+            {"email": email, "message": message},
         )
