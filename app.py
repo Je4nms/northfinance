@@ -13,7 +13,7 @@ from zoneinfo import ZoneInfo
 import streamlit as st
 from sqlalchemy import create_engine
 
-from northfinance import db, export, ui
+from northfinance import db, ui
 from northfinance.categories import CATEGORIES, INCOME_CATEGORIES
 from northfinance.money import day_label, month_name, month_range, to_brl, to_cents
 
@@ -216,20 +216,6 @@ elif tab == "menu":
                 # Deixar em branco (ou zero) apaga a meta
                 db.set_goal(engine, owner, to_cents(goal_value) if goal_value else None)
                 st.toast("Meta salva!" if goal_value else "Meta removida.", icon=":material/flag:")
-
-    with st.container(border=True):
-        st.markdown("**:material/download: Baixar meus lançamentos**")
-        st.caption("Todos os seus ganhos e gastos numa planilha do Excel.")
-        all_transactions = db.list_all_transactions(engine, owner)
-        st.download_button(
-            "Baixar planilha (Excel)",
-            data=export.transactions_to_excel(all_transactions),
-            file_name=f"northfinance-{today:%Y-%m-%d}.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            icon=":material/table_view:",
-            width="stretch",
-            disabled=not all_transactions,
-        )
 
     with st.container(border=True):
         st.markdown("**:material/chat: Enviar sugestão**")
