@@ -80,7 +80,8 @@ header[data-testid="stHeader"] {{ display: none; }}
 
 /* Barra de navegação fixa embaixo, como num app */
 .st-key-bottom_nav {{
-  position: fixed; bottom: 0; left: 0; right: 0; z-index: 1000;
+  position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); z-index: 1000;
+  width: 100%; max-width: 520px;  /* no computador, a barra fica do tamanho do conteúdo */
   background: {c["surface"]}; border-top: 1px solid {c["border"]};
   padding: 6px 8px calc(8px + env(safe-area-inset-bottom));
   flex-wrap: nowrap !important; justify-content: space-around !important;
@@ -89,6 +90,11 @@ header[data-testid="stHeader"] {{ display: none; }}
 .st-key-bottom_nav button {{ width: 100%; padding: 6px 2px; min-height: 52px; }}
 .st-key-bottom_nav button p {{ font-size: 0.72rem; }}
 .st-key-bottom_nav button > div, .st-key-bottom_nav button > span {{ flex-direction: column; gap: 2px; }}
+/* No computador, a barra ganha bordas arredondadas e fica "flutuando" */
+@media (min-width: 560px) {{
+  .st-key-bottom_nav {{ bottom: 12px; border: 1px solid {c["border"]}; border-radius: 18px; }}
+}}
+
 </style>
 """
 
