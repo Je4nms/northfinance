@@ -41,7 +41,7 @@ def styles(theme: str) -> str:
 <style>
 /* Esconde o cabeçalho padrão do Streamlit e deixa a página com largura de celular */
 header[data-testid="stHeader"] {{ display: none; }}
-[data-testid="stMainBlockContainer"] {{ padding: 1.25rem 1rem 7rem; max-width: 520px; }}
+[data-testid="stMainBlockContainer"] {{ padding: 1.25rem 1rem 10rem; max-width: 520px; }}
 
 /* Marca no topo */
 .nf-brand {{ display: flex; align-items: center; gap: 10px; }}
@@ -79,20 +79,24 @@ header[data-testid="stHeader"] {{ display: none; }}
 [class*="st-key-tx-"] {{ flex-wrap: nowrap !important; align-items: center !important; }}
 
 /* Barra de navegação fixa embaixo, como num app */
+/* Ela "flutua" acima do rodapé: no celular, o Streamlit Cloud coloca uns selos
+   no canto de baixo da tela, que ficariam por cima dos botões. */
 .st-key-bottom_nav {{
-  position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); z-index: 1000;
-  width: 100%; max-width: 520px;  /* no computador, a barra fica do tamanho do conteúdo */
-  background: {c["surface"]}; border-top: 1px solid {c["border"]};
-  padding: 6px 8px calc(8px + env(safe-area-inset-bottom));
+  position: fixed; left: 50%; transform: translateX(-50%); z-index: 1000;
+  bottom: calc(60px + env(safe-area-inset-bottom));
+  width: calc(100% - 24px); max-width: 520px;
+  background: {c["surface"]}; border: 1px solid {c["border"]}; border-radius: 18px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  padding: 6px 8px;
   flex-wrap: nowrap !important; justify-content: space-around !important;
 }}
 .st-key-bottom_nav > div {{ flex: 1 1 0; min-width: 0; }}
 .st-key-bottom_nav button {{ width: 100%; padding: 6px 2px; min-height: 52px; }}
 .st-key-bottom_nav button p {{ font-size: 0.72rem; }}
 .st-key-bottom_nav button > div, .st-key-bottom_nav button > span {{ flex-direction: column; gap: 2px; }}
-/* No computador, a barra ganha bordas arredondadas e fica "flutuando" */
+/* No computador os selos ficam longe, no canto direito: a barra pode descer */
 @media (min-width: 560px) {{
-  .st-key-bottom_nav {{ bottom: 12px; border: 1px solid {c["border"]}; border-radius: 18px; }}
+  .st-key-bottom_nav {{ bottom: 12px; }}
 }}
 
 </style>

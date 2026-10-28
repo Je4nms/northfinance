@@ -130,7 +130,8 @@ elif tab == "anotar":
                 st.error("Escolha uma categoria.")
             else:
                 db.add_transaction(engine, owner, kind, to_cents(amount), category, description, occurred_on)
-                st.toast(f"{category}: {to_brl(to_cents(amount))} salvo!", icon="✅")
+                label = "Ganho" if kind == db.INCOME else "Gasto"
+                st.toast(f"{label} salvo · {to_brl(to_cents(amount))}", icon=":material/check_circle:")
 
 elif tab == "extrato":
     st.subheader(f"Extrato · {month_name(today)}")
