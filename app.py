@@ -36,7 +36,7 @@ if st.query_params.get("pagina") == "privacidade":
 # --- Entrada: login com Google ---
 # Quem confere a identidade é o Google: o app nunca vê nem guarda senha de ninguém.
 if not st.user.is_logged_in:
-    st.html(ui.welcome())
+    st.html(ui.welcome(st.context.theme.type or "light"))
     if st.button("Entrar com Google", icon=":material/login:", type="primary", width="stretch"):
         st.login()
     st.html(ui.privacy_link())
@@ -64,7 +64,7 @@ owner = st.user.email.lower()
 # Por enquanto o app é só para convidados. Quem tem o código entra uma vez
 # e o e-mail fica guardado na tabela "members"; nas próximas, entra direto.
 if not db.is_member(engine, owner):
-    st.html(ui.welcome())
+    st.html(ui.welcome(st.context.theme.type or "light"))
     st.markdown(f"Olá, **{st.user.name or owner}**! Falta só uma coisa: o **código de convite**.")
     with st.form("invite", border=False):
         code = st.text_input("Código de convite", placeholder="Ex.: NORTE2026")

@@ -13,6 +13,28 @@ from pathlib import Path
 _LOGO_BYTES = (Path(__file__).resolve().parent.parent / "assets" / "logo.svg").read_bytes()
 LOGO_IMG = f'<img src="data:image/svg+xml;base64,{base64.b64encode(_LOGO_BYTES).decode()}" alt="NorthFinance">'
 
+# Versão animada da logo, só para a tela de entrada: o marcador do norte (o triângulo
+# do topo) dá uma volta na bússola e para apontando para o norte. A animação fica
+# dentro do próprio desenho, e quem ativou "reduzir movimento" no celular vê ela parada.
+_NEEDLE = '<polygon points="100,22 116,48 84,48" fill="#fff"/>'
+_ANIMATED_LOGO = (
+    _LOGO_BYTES.decode()
+    .replace(_NEEDLE, f'<g class="needle">{_NEEDLE}</g>')
+    .replace(
+        "</defs>",
+        """</defs>
+  <style>
+    .needle { transform-box: view-box; transform-origin: 100px 104px;
+              animation: find-north 1.6s cubic-bezier(.2, .8, .2, 1) .2s both; }
+    @keyframes find-north { from { transform: rotate(-300deg); } to { transform: rotate(0deg); } }
+    @media (prefers-reduced-motion: reduce) { .needle { animation: none; } }
+  </style>""",
+    )
+)
+LOGO_ANIMATED_IMG = (
+    f'<img src="data:image/svg+xml;base64,{base64.b64encode(_ANIMATED_LOGO.encode()).decode()}" alt="NorthFinance">'
+)
+
 # Cores para o tema claro e para o escuro (o app segue o tema do celular)
 PALETTES = {
     "light": {
@@ -22,6 +44,7 @@ PALETTES = {
         "muted": "#667085",
         "income": "#15803d",
         "expense": "#d92d20",
+        "aurora": 0.45,
     },
     "dark": {
         "surface": "#0e1117",
@@ -30,6 +53,7 @@ PALETTES = {
         "muted": "#98a2b3",
         "income": "#4ade80",
         "expense": "#f97066",
+        "aurora": 0.55,
     },
 }
 GRADIENT = "linear-gradient(45deg, #1e4fd6, #22c55e)"
@@ -57,6 +81,7 @@ header[data-testid="stHeader"] {{ display: none; }}
 
 .nf-footer {{ text-align: center; font-size: 0.8rem; margin-top: 1rem; }}
 .nf-footer a {{ color: {c["muted"]}; }}
+
 
 /* Cartões de ganhos, gastos e saldo */
 .nf-cards {{ display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }}
@@ -112,10 +137,11 @@ def brand() -> str:
     return f'<div class="nf-brand">{LOGO_IMG}<span><b>North</b>Finance</span></div>'
 
 
-def welcome() -> str:
-    return f"""
+def welcome(theme: str) -> str:
+    """Tela de entrada: logo animada e o fundo "aurora" (luz do norte) se mexendo devagar."""
+    return aurora(theme) + f"""
 <div class="nf-welcome">
-  {LOGO_IMG}
+  {LOGO_ANIMATED_IMG}
   <h1><b>North</b>Finance</h1>
   <p>O app de finanças mais simples que existe.</p>
 </div>"""
@@ -127,6 +153,34 @@ def wide_layout() -> str:
 @media (min-width: 900px) {
   [data-testid="stMainBlockContainer"] { max-width: 960px; }
 }
+</style>"""
+
+
+def aurora(theme: str) -> str:
+    """Fundo "aurora" da tela de entrada: luzes azul e verde, bem suaves, se mexendo devagar.
+
+    É desenhado no fundo da página (atrás de tudo), e só existe na tela de entrada.
+    Quem ativou "reduzir movimento" no celular vê o fundo parado.
+    """
+    a = PALETTES[theme]["aurora"]
+    return f"""<style>
+[data-testid="stAppViewContainer"]::before {{
+  content: ""; position: fixed; inset: -20vmax; z-index: 0; pointer-events: none;
+  background:
+    radial-gradient(closest-side, rgba(30, 79, 214, {a}), transparent) 15% 10% / 75vmax 75vmax no-repeat,
+    radial-gradient(closest-side, rgba(34, 197, 94, {a}), transparent) 85% 90% / 85vmax 85vmax no-repeat,
+    radial-gradient(closest-side, rgba(20, 184, 166, {a * 0.7:.2f}), transparent) 60% 55% / 55vmax 55vmax no-repeat;
+  animation: nf-aurora 18s ease-in-out infinite alternate;
+}}
+[data-testid="stMain"] {{ position: relative; z-index: 1; }}
+@keyframes nf-aurora {{
+  0%   {{ transform: translate(0, 0) rotate(0deg) scale(1); }}
+  50%  {{ transform: translate(6vmax, 4vmax) rotate(8deg) scale(1.08); }}
+  100% {{ transform: translate(-5vmax, 7vmax) rotate(-6deg) scale(0.96); }}
+}}
+@media (prefers-reduced-motion: reduce) {{
+  [data-testid="stAppViewContainer"]::before {{ animation: none; }}
+}}
 </style>"""
 
 
