@@ -39,3 +39,18 @@ def day_label(day: date, today: date) -> str:
     if (today - day).days == 1:
         return "Ontem"
     return f"{day.day} de {MONTHS[day.month - 1]}"
+
+
+def shift_month(day: date, months: int) -> date:
+    """Primeiro dia do mês, andando `months` meses (negativo = para trás)."""
+    index = day.year * 12 + day.month - 1 + months
+    return date(index // 12, index % 12 + 1, 1)
+
+
+def greeting(hour: int) -> str:
+    """Saudação conforme a hora do dia."""
+    if 5 <= hour < 12:
+        return "Bom dia"
+    if 12 <= hour < 18:
+        return "Boa tarde"
+    return "Boa noite"

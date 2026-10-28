@@ -15,7 +15,7 @@ from sqlalchemy import create_engine
 
 from northfinance import db, ui
 from northfinance.categories import CATEGORIES, INCOME_CATEGORIES
-from northfinance.money import day_label, month_name, month_range, to_brl, to_cents
+from northfinance.money import day_label, greeting, month_name, month_range, shift_month, to_brl, to_cents
 
 st.set_page_config(page_title="NorthFinance", page_icon="assets/icon.png")
 st.html(ui.styles(st.context.theme.type or "light"))
@@ -77,8 +77,30 @@ if not db.is_member(engine, owner):
         st.logout()
     st.stop()
 
-today = datetime.now(ZoneInfo("America/Sao_Paulo")).date()
-start, end = month_range(today)
+now = datetime.now(ZoneInfo("America/Sao_Paulo"))
+today = now.date()
+
+# Mês que a pessoa está vendo: 0 = o mês atual, -1 = o anterior, e assim por diante
+month_offset = st.session_state.setdefault("month_offset", 0)
+viewed_month = shift_month(today, month_offset)
+start, end = month_range(viewed_month)
+
+# Botão do olho: esconde os valores (bom para abrir o app perto dos outros)
+hide_values = st.session_state.setdefault("hide_values", False)
+
+
+def fmt(cents: int) -> str:
+    """Valor em reais, ou escondido se o olho estiver fechado."""
+    return "R$ •••••" if hide_values else to_brl(cents)
+
+
+def change_month(step: int) -> None:
+    st.session_state.month_offset = min(0, st.session_state.month_offset + step)
+
+
+def toggle_values() -> None:
+    st.session_state.hide_values = not st.session_state.hide_values
+
 
 TABS = {
     "inicio": ("Início", ":material/home:"),
@@ -99,7 +121,7 @@ def show_transactions(transactions: list[dict], allow_delete: bool) -> None:
         st.html(ui.day_header(day_label(day, today)))
         for t in items:
             with st.container(key=f"tx-{t['id']}", horizontal=True, gap="small"):
-                st.html(ui.transaction_row(t["category"], t["description"], to_brl(t["amount_cents"]), t["kind"]))
+                st.html(ui.transaction_row(t["category"], t["description"], fmt(t["amount_cents"]), t["kind"]))
                 if allow_delete:
                     with st.popover("", icon=":material/more_vert:", type="tertiary"):
                         if st.button("Apagar", icon=":material/delete:", key=f"delete-{t['id']}"):
@@ -107,39 +129,55 @@ def show_transactions(transactions: list[dict], allow_delete: bool) -> None:
                             st.rerun()
 
 
+def month_navigation() -> None:
+    """‹ Outubro de 2026 ›: anda entre os meses (não deixa ir para o futuro)."""
+    with st.container(key="month_nav", horizontal=True):
+        st.button("", icon=":material/chevron_left:", key="month_prev", type="tertiary",
+                  on_click=change_month, args=(-1,), help="Mês anterior")
+        st.markdown(month_name(viewed_month))
+        st.button("", icon=":material/chevron_right:", key="month_next", type="tertiary",
+                  on_click=change_month, args=(1,), disabled=month_offset == 0, help="Próximo mês")
+
+
 # --- Telas ---
-if tab != "anotar":
+theme = st.context.theme.type or "light"
+if tab not in ("anotar", "inicio"):
     st.html(ui.brand())
 
 if tab == "inicio":
+    first_name = (st.user.name or owner).split()[0]
+    with st.container(key="hero_row", horizontal=True):
+        st.html(ui.hero(theme, greeting(now.hour), first_name, st.user.get("picture")))
+        st.button("", icon=":material/visibility_off:" if hide_values else ":material/visibility:",
+                  key="toggle_values", on_click=toggle_values,
+                  help="Mostrar valores" if hide_values else "Esconder valores")
+
     # No PC, duas colunas: resumo à esquerda e últimos lançamentos à direita.
     # No celular, o Streamlit empilha as colunas, uma embaixo da outra.
     st.html(ui.wide_layout())
     col_summary, col_recent = st.columns(2, gap="large")
 
     with col_summary:
+        month_navigation()
         totals = db.month_totals(engine, owner, start, end)
-        st.subheader(month_name(today))
-        st.html(ui.summary_cards(
-            income=to_brl(totals[db.INCOME]),
-            expense=to_brl(totals[db.EXPENSE]),
-            balance=to_brl(totals[db.INCOME] - totals[db.EXPENSE]),
+        st.html(ui.balance_hero(
+            label="Sobrou no mês",
+            balance=fmt(totals[db.INCOME] - totals[db.EXPENSE]),
+            income=fmt(totals[db.INCOME]),
+            expense=fmt(totals[db.EXPENSE]),
         ))
         goal = db.get_goal(engine, owner)
-        if goal:
+        if goal and month_offset == 0 and not hide_values:
             st.html(ui.goal_bar(totals[db.EXPENSE], goal, to_brl))
 
         by_category = db.expenses_by_category(engine, owner, start, end)
         if by_category:
-            st.markdown("**Para onde foi o dinheiro**")
-            for row in by_category:
-                share = row["total_cents"] / totals[db.EXPENSE]
-                st.progress(share, text=f"{row['category']} · {to_brl(row['total_cents'])} ({share:.0%})")
+            st.html(ui.category_breakdown(by_category, totals[db.EXPENSE], CATEGORIES, theme, fmt))
 
     with col_recent:
         recent = db.list_transactions(engine, owner, start, end)[:5]
         if recent:
-            st.markdown("**Últimos lançamentos**")
+            st.html('<div class="nf-section-title">Últimos lançamentos</div>')
             show_transactions(recent, allow_delete=False)
         else:
             st.info("Nada anotado neste mês ainda. Toque em **Anotar** para começar.")
@@ -172,7 +210,8 @@ elif tab == "anotar":
                 st.toast(f"{label} salvo · {to_brl(to_cents(amount))}", icon=":material/check_circle:")
 
 elif tab == "extrato":
-    st.subheader(f"Extrato · {month_name(today)}")
+    st.subheader("Extrato")
+    month_navigation()
     transactions = db.list_transactions(engine, owner, start, end)
     if transactions:
         show_transactions(transactions, allow_delete=True)
