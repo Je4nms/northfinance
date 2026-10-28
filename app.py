@@ -48,15 +48,22 @@ if not st.user.is_logged_in:
 # ninguém usa, e assim o app reconecta sozinho quando ele acorda.
 @st.cache_resource
 def get_engine():
-    engine = create_engine(
+    return create_engine(
         st.secrets["database_url"].replace("postgresql://", "postgresql+psycopg://", 1),
         pool_pre_ping=True,
     )
-    db.create_tables(engine)
-    return engine
+
+
+# Cria as tabelas e colunas que faltam. Roda de novo sempre que o SCHEMA_VERSION
+# muda: quando o Streamlit Cloud atualiza o código sem reiniciar o app, a conexão
+# acima continua guardada, mas uma versão nova do banco ainda é aplicada.
+@st.cache_resource
+def prepare_database(_engine, version: int) -> None:
+    db.create_tables(_engine)
 
 
 engine = get_engine()
+prepare_database(engine, db.SCHEMA_VERSION)
 # Cada lançamento é guardado com o e-mail do Google de quem anotou
 owner = st.user.email.lower()
 

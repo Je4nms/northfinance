@@ -23,6 +23,10 @@ from sqlalchemy import (
 EXPENSE = "expense"
 INCOME = "income"
 
+# Aumente este número sempre que mudar tabelas ou colunas: o app aplica a mudança
+# no banco mesmo quando o Streamlit Cloud atualiza o código sem reiniciar.
+SCHEMA_VERSION = 4
+
 metadata = MetaData()
 
 # Cada linha é um lançamento: um gasto ou um ganho.
