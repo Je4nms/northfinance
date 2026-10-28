@@ -28,6 +28,8 @@ O `?embed=true` no final esconde os selos do Streamlit Cloud, que ficariam por c
 - **Barra de navegação embaixo**, como num app de celular.
 - **Login com Google:** cada pessoa vê só os próprios lançamentos. O app nunca vê nem guarda senhas.
 - **Convite por código:** na primeira vez, a pessoa digita o código que recebeu de quem a convidou.
+- **Menu:** convidar pelo WhatsApp (mensagem pronta com link e código), enviar sugestões e ver a Política de Privacidade.
+- **No computador**, o Início usa duas colunas: resumo de um lado, últimos lançamentos do outro.
 
 ## Tecnologias
 
@@ -50,3 +52,13 @@ O `?embed=true` no final esconde os selos do Streamlit Cloud, que ficariam por c
    ```bash
    streamlit run app.py
    ```
+
+## Lendo as sugestões
+
+As sugestões enviadas pelo Menu ficam na tabela `feedback`. Para ler, no SQL Editor do Neon:
+
+```sql
+SELECT email, message, created_at
+FROM feedback
+ORDER BY created_at DESC;
+```

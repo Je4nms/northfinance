@@ -121,6 +121,15 @@ def welcome() -> str:
 </div>"""
 
 
+def wide_layout() -> str:
+    """No computador, deixa a página mais larga (usado no Início, que tem duas colunas)."""
+    return """<style>
+@media (min-width: 900px) {
+  [data-testid="stMainBlockContainer"] { max-width: 960px; }
+}
+</style>"""
+
+
 def privacy_link() -> str:
     return '<p class="nf-footer"><a href="?pagina=privacidade" target="_blank">Política de Privacidade</a></p>'
 

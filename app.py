@@ -7,6 +7,7 @@ import hmac
 from datetime import datetime
 from itertools import groupby
 from pathlib import Path
+from urllib.parse import quote
 from zoneinfo import ZoneInfo
 
 import streamlit as st
@@ -21,6 +22,8 @@ st.html(ui.styles(st.context.theme.type or "light"))
 
 
 PRIVACY_POLICY = Path(__file__).parent / "northfinance" / "privacy.md"
+# Endereço que vai nos convites. O "?embed=true" esconde os selos do Streamlit Cloud.
+APP_URL = "https://northfinance-je4nms.streamlit.app/?embed=true"
 
 # --- Política de Privacidade: aberta para qualquer pessoa, sem login ---
 # Endereço: .../?pagina=privacidade (o Google exige essa página para liberar o login)
@@ -109,27 +112,34 @@ if tab != "anotar":
     st.html(ui.brand())
 
 if tab == "inicio":
-    totals = db.month_totals(engine, owner, start, end)
-    st.subheader(month_name(today))
-    st.html(ui.summary_cards(
-        income=to_brl(totals[db.INCOME]),
-        expense=to_brl(totals[db.EXPENSE]),
-        balance=to_brl(totals[db.INCOME] - totals[db.EXPENSE]),
-    ))
+    # No PC, duas colunas: resumo à esquerda e últimos lançamentos à direita.
+    # No celular, o Streamlit empilha as colunas, uma embaixo da outra.
+    st.html(ui.wide_layout())
+    col_summary, col_recent = st.columns(2, gap="large")
 
-    by_category = db.expenses_by_category(engine, owner, start, end)
-    if by_category:
-        st.markdown("**Para onde foi o dinheiro**")
-        for row in by_category:
-            share = row["total_cents"] / totals[db.EXPENSE]
-            st.progress(share, text=f"{row['category']} · {to_brl(row['total_cents'])} ({share:.0%})")
+    with col_summary:
+        totals = db.month_totals(engine, owner, start, end)
+        st.subheader(month_name(today))
+        st.html(ui.summary_cards(
+            income=to_brl(totals[db.INCOME]),
+            expense=to_brl(totals[db.EXPENSE]),
+            balance=to_brl(totals[db.INCOME] - totals[db.EXPENSE]),
+        ))
 
-    recent = db.list_transactions(engine, owner, start, end)[:5]
-    if recent:
-        st.markdown("**Últimos lançamentos**")
-        show_transactions(recent, allow_delete=False)
-    else:
-        st.info("Nada anotado neste mês ainda. Toque em **Anotar** para começar.")
+        by_category = db.expenses_by_category(engine, owner, start, end)
+        if by_category:
+            st.markdown("**Para onde foi o dinheiro**")
+            for row in by_category:
+                share = row["total_cents"] / totals[db.EXPENSE]
+                st.progress(share, text=f"{row['category']} · {to_brl(row['total_cents'])} ({share:.0%})")
+
+    with col_recent:
+        recent = db.list_transactions(engine, owner, start, end)[:5]
+        if recent:
+            st.markdown("**Últimos lançamentos**")
+            show_transactions(recent, allow_delete=False)
+        else:
+            st.info("Nada anotado neste mês ainda. Toque em **Anotar** para começar.")
 
 elif tab == "anotar":
     st.subheader("Anotar")
@@ -168,14 +178,53 @@ elif tab == "extrato":
 
 elif tab == "menu":
     st.subheader("Menu")
-    st.markdown(
-        "**Sobre o NorthFinance**  \n"
-        "O app de finanças mais simples que existe: anote o que entra e o que sai, "
-        "e veja para onde o dinheiro está indo."
-    )
-    st.caption(f"Conectado como **{st.user.name or owner}** ({owner})")
-    if st.button("Sair", icon=":material/logout:", width="stretch"):
-        st.logout()
+
+    with st.container(border=True):
+        st.markdown("**:material/group_add: Convidar alguém**")
+        st.caption("Mande o NorthFinance para a família e os amigos. A mensagem já vai com o link e o código.")
+        invite_message = (
+            "Oi! Estou usando o NorthFinance para organizar minhas finanças. "
+            f"Entra com a sua conta Google: {APP_URL} "
+            f"Código de convite: {st.secrets['invite_code']}"
+        )
+        st.code(invite_message, language=None, wrap_lines=True)
+        st.link_button(
+            "Enviar no WhatsApp",
+            f"https://wa.me/?text={quote(invite_message)}",
+            icon=":material/send:",
+            type="primary",
+            width="stretch",
+        )
+
+    with st.container(border=True):
+        st.markdown("**:material/chat: Enviar sugestão**")
+        with st.form("feedback", clear_on_submit=True, border=False):
+            message = st.text_area(
+                "Sugestão",
+                max_chars=1000,
+                placeholder="Uma ideia, algo que não funcionou, o que você sentiu falta...",
+                label_visibility="collapsed",
+            )
+            if st.form_submit_button("Enviar", icon=":material/send:", width="stretch"):
+                if message.strip():
+                    db.add_feedback(engine, owner, message.strip())
+                    st.toast("Sugestão enviada. Obrigado!", icon=":material/favorite:")
+                else:
+                    st.error("Escreva a sua sugestão antes de enviar.")
+
+    with st.container(border=True):
+        st.markdown("**:material/info: Sobre o NorthFinance**")
+        st.caption(
+            "O app de finanças mais simples que existe: anote o que entra e o que sai, "
+            "e veja para onde o dinheiro está indo."
+        )
+        st.markdown("[Política de Privacidade](?pagina=privacidade)")
+
+    with st.container(border=True):
+        st.markdown("**:material/account_circle: Conta**")
+        st.caption(f"Conectado como **{st.user.name or owner}** ({owner})")
+        if st.button("Sair", icon=":material/logout:", width="stretch"):
+            st.logout()
 
 # --- Barra de navegação embaixo ---
 with st.container(key="bottom_nav", horizontal=True):
