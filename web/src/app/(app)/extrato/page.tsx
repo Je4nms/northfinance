@@ -110,7 +110,7 @@ async function Statement({ searchParams }: { searchParams: Promise<Params> }) {
           <p className="text-sm text-muted">
             {transactions.length} lançamento(s) · saldo do período: <b className="text-fg">{fmt(total)}</b>
           </p>
-          <TransactionList transactions={transactions} today={today} fmt={fmt} allowDelete />
+          <TransactionList transactions={transactions} today={today} fmt={fmt} />
         </>
       ) : (
         <p className="rounded-3xl bg-card p-4 text-muted">Nenhum lançamento nesse período.</p>

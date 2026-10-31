@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 
-import { AddForm } from "@/components/add-form";
+import { TransactionForm } from "@/components/transaction-form";
 import { Brand } from "@/components/brand";
 import { LoadingLogo } from "@/components/loading-logo";
 import { isoDate, todayInSaoPaulo } from "@/lib/money";
@@ -20,5 +20,5 @@ export default function Page() {
 
 async function Form() {
   await currentMember();
-  return <AddForm today={isoDate(todayInSaoPaulo())} />;
+  return <TransactionForm today={isoDate(todayInSaoPaulo())} />;
 }
