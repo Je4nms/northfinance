@@ -1,9 +1,13 @@
 // Menu no estilo "perfil": foto, nome e as opções em blocos
-import { ChevronRight, Info, LogOut, MessageSquare, UserPlus } from "lucide-react";
+import { ChevronRight, Info, LogOut, MessageSquare, Repeat, Trash2, UserPlus } from "lucide-react";
 import Link from "next/link";
 import { Suspense } from "react";
 
-import { leave } from "@/app/actions";
+import { deleteRecurring, leave } from "@/app/actions";
+import { CategoryIcon } from "@/components/category-icon";
+import { categoryName } from "@/lib/categories";
+import * as db from "@/lib/db";
+import { toBRL } from "@/lib/money";
 import { LoadingLogo } from "@/components/loading-logo";
 import { CopyButton, FeedbackForm } from "@/components/menu-client";
 import { currentMember } from "@/lib/session";
@@ -25,6 +29,7 @@ async function Menu({ searchParams }: { searchParams: PageProps<"/menu">["search
     "Oi! Estou usando o NorthFinance para organizar minhas finanças. " +
     `Entra com a sua conta Google: ${APP_URL} Código de convite: ${process.env.INVITE_CODE ?? ""}`;
   const card = "space-y-3 rounded-3xl bg-card p-4";
+  const recurring = await db.listRecurring(member.email);
 
   return (
     <div className="nf-fade-in mx-auto max-w-[520px] space-y-4">
@@ -54,6 +59,30 @@ async function Menu({ searchParams }: { searchParams: PageProps<"/menu">["search
             WhatsApp
           </a>
         </div>
+      </section>
+
+      <section className={card}>
+        <h2 className="flex items-center gap-2 font-bold"><Repeat size={18} className="text-primary" /> Gastos fixos</h2>
+        {recurring.length === 0 ? (
+          <p className="text-sm text-muted">Nenhum ainda. No Anotar, marque "Repetir todo mês" em contas como luz, internet ou assinaturas.</p>
+        ) : (
+          <ul className="divide-y divide-line">
+            {recurring.map((r) => (
+              <li key={r.id} className="flex items-center gap-3 py-2">
+                <CategoryIcon category={r.category} size={36} />
+                <div className="min-w-0 flex-1">
+                  <p className="truncate font-semibold">{r.description || categoryName(r.category)}</p>
+                  <p className="text-sm text-muted">Todo dia {r.dayOfMonth} · {toBRL(r.amountCents)}</p>
+                </div>
+                <form action={deleteRecurring.bind(null, r.id)}>
+                  <button aria-label={`Parar de repetir ${r.description || categoryName(r.category)}`} className="flex h-10 w-10 items-center justify-center rounded-full text-muted hover:text-expense">
+                    <Trash2 size={18} />
+                  </button>
+                </form>
+              </li>
+            ))}
+          </ul>
+        )}
       </section>
 
       <section id="sugestao" className={card}>

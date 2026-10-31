@@ -42,9 +42,9 @@ export async function acceptInvite(_: FormState, form: FormData): Promise<FormSt
   redirect("/");
 }
 
-export async function addTransaction(_: FormState, form: FormData): Promise<FormState> {
-  const member = await currentMember();
-  const kind = form.get("kind") === "income" ? "income" : "expense";
+/** Lê e confere os campos do formulário de lançamento (o mesmo do Anotar e do Editar). */
+function readTransaction(form: FormData) {
+  const kind: db.Kind = form.get("kind") === "income" ? "income" : "expense";
   const amountCents = parseBRL(String(form.get("amount") ?? ""));
   const category = String(form.get("category") ?? "");
   const description = String(form.get("description") ?? "").trim().slice(0, 100) || null;
@@ -58,16 +58,47 @@ export async function addTransaction(_: FormState, form: FormData): Promise<Form
   if (!day || isNaN(day.getTime()) || day > todayInSaoPaulo() || day.getUTCFullYear() < 2000) {
     return { error: "Escolha uma data válida (não pode ser no futuro)." };
   }
+  return { data: { kind, amountCents, category, description, occurredOn }, day };
+}
 
-  await db.addTransaction(member.email, { kind, amountCents, category, description, occurredOn });
-  return { ok: `${kind === "income" ? "Ganho" : "Gasto"} salvo` };
+export async function addTransaction(_: FormState, form: FormData): Promise<FormState> {
+  const member = await currentMember();
+  const read = readTransaction(form);
+  if (!("data" in read) || !read.data) return { error: read.error };
+  await db.addTransaction(member.email, read.data);
+
+  // "Repetir todo mês": vira um gasto fixo, lançado sozinho no mesmo dia dos próximos meses
+  if (form.get("repeat") === "on") {
+    const day = read.day!;
+    const startMonth = new Date(Date.UTC(day.getUTCFullYear(), day.getUTCMonth(), 1)).toISOString().slice(0, 10);
+    const saved = await db.addRecurring(member.email, { ...read.data, dayOfMonth: day.getUTCDate(), startMonth });
+    if (!saved) return { ok: "Salvo, mas os gastos fixos ainda não foram ativados no banco" };
+    return { ok: `${read.data.kind === "income" ? "Ganho" : "Gasto"} salvo e repetindo todo dia ${day.getUTCDate()}` };
+  }
+  return { ok: `${read.data.kind === "income" ? "Ganho" : "Gasto"} salvo` };
+}
+
+export async function updateTransaction(id: number, _: FormState, form: FormData): Promise<FormState> {
+  const member = await currentMember();
+  if (!Number.isSafeInteger(id)) return { error: "Lançamento não encontrado." };
+  const read = readTransaction(form);
+  if (!("data" in read) || !read.data) return { error: read.error };
+  await db.updateTransaction(member.email, id, read.data);
+  redirect("/extrato");
+}
+
+export async function deleteRecurring(id: number) {
+  const member = await currentMember();
+  if (!Number.isSafeInteger(id)) return;
+  await db.deleteRecurring(member.email, id);
+  refresh();
 }
 
 export async function deleteTransaction(id: number) {
   const member = await currentMember();
   if (!Number.isSafeInteger(id)) return;
   await db.deleteTransaction(member.email, id);
-  refresh();
+  redirect("/extrato");
 }
 
 export async function saveGoal(form: FormData) {

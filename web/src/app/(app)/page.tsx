@@ -1,11 +1,13 @@
 // Início: saudação, saldo do mês, meta, para onde foi o dinheiro e últimos lançamentos
-import { ChevronLeft, ChevronRight, Eye, EyeOff, Target } from "lucide-react";
+import { ChevronLeft, ChevronRight, Eye, EyeOff, Target, TrendingDown, TrendingUp } from "lucide-react";
 import { cookies } from "next/headers";
 import Link from "next/link";
 import { Suspense } from "react";
 
 import { answerEnjoying, saveGoal, toggleValues } from "@/app/actions";
+import { AnimatedNumber } from "@/components/animated-number";
 import { CategoryIcon } from "@/components/category-icon";
+import { DailyChart } from "@/components/daily-chart";
 import { LoadingLogo } from "@/components/loading-logo";
 import { TransactionList } from "@/components/transaction-list";
 import { categoryColor, categoryName } from "@/lib/categories";
@@ -32,12 +34,25 @@ async function Home({ searchParams }: { searchParams: PageProps<"/">["searchPara
   const isCurrentMonth = month.getTime() === shiftMonth(today, 0).getTime();
   const [start, end] = monthRange(month);
 
-  const [totals, byCategory, recent, goal, askEnjoying] = await Promise.all([
+  // Antes de mostrar o mês, lança os gastos fixos que já venceram
+  await db.runRecurring(member.email, today);
+
+  // Comparação com o mês anterior, no mesmo período (do dia 1 até o mesmo dia)
+  const previous = shiftMonth(month, -1);
+  const sameDay = isCurrentMonth ? today.getUTCDate() : 31;
+  const previousEnd = new Date(Math.min(
+    Date.UTC(previous.getUTCFullYear(), previous.getUTCMonth(), sameDay + 1),
+    Date.UTC(previous.getUTCFullYear(), previous.getUTCMonth() + 1, 1),
+  ));
+
+  const [totals, byCategory, recent, goal, askEnjoying, byDay, previousSpent] = await Promise.all([
     db.monthTotals(member.email, start, end),
     db.expensesByCategory(member.email, start, end),
     db.listTransactions(member.email, start, end),
     db.getGoal(member.email),
     db.shouldAskEnjoying(member.email),
+    db.expensesByDay(member.email, start, end),
+    db.expensesBetween(member.email, previous, previousEnd),
   ]);
   const balance = totals.income - totals.expense;
 
@@ -90,7 +105,7 @@ async function Home({ searchParams }: { searchParams: PageProps<"/">["searchPara
 
           <section>
             <p className="text-sm text-muted">Sobrou no mês</p>
-            <p className="text-5xl leading-tight font-extrabold tracking-tight">{fmt(balance)}</p>
+            <p className="text-5xl leading-tight font-extrabold tracking-tight tabular-nums"><AnimatedNumber cents={balance} hidden={hide} /></p>
           </section>
 
           <div className="grid grid-cols-2 gap-2.5">
@@ -104,7 +119,13 @@ async function Home({ searchParams }: { searchParams: PageProps<"/">["searchPara
             </div>
           </div>
 
+          {previousSpent > 0 && totals.expense > 0 && (
+            <Comparison spent={totals.expense} previous={previousSpent} previousMonth={previous} hide={hide} partial={isCurrentMonth} />
+          )}
+
           {isCurrentMonth && !hide && <Goal spent={totals.expense} goal={goal} today={today} />}
+
+          {totals.expense > 0 && <DailyChart byDay={byDay} month={month} today={today} fmt={fmt} />}
 
           {byCategory.length > 0 && (
             <section>
@@ -230,6 +251,28 @@ function Goal({ spent, goal, today }: { spent: number; goal: number | null; toda
         </div>
       </div>
       {editor}
+    </div>
+  );
+}
+
+/** "Você gastou 15% menos que no mesmo período de setembro" */
+function Comparison({ spent, previous, previousMonth, hide, partial }: {
+  spent: number; previous: number; previousMonth: Date; hide: boolean; partial: boolean;
+}) {
+  const diff = spent - previous;
+  const pct = Math.round((Math.abs(diff) / previous) * 100);
+  const less = diff <= 0;
+  const monthWord = monthName(previousMonth).split(" ")[0].toLowerCase();
+  const Icon = less ? TrendingDown : TrendingUp;
+  return (
+    <div className={`flex items-center gap-3 rounded-3xl p-4 ${less ? "bg-income/10" : "bg-expense/10"}`}>
+      <span className={`flex h-10 w-10 flex-none items-center justify-center rounded-full ${less ? "bg-income/20 text-income" : "bg-expense/20 text-expense"}`}>
+        <Icon size={20} />
+      </span>
+      <p className="text-sm">
+        Você gastou <b className={less ? "text-income" : "text-expense"}>{pct}% {less ? "a menos" : "a mais"}</b>
+        {hide ? "" : ` (${toBRL(Math.abs(diff))})`} que {partial ? "no mesmo período de" : "em"} {monthWord}.
+      </p>
     </div>
   );
 }

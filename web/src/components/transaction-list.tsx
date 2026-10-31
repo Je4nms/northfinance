@@ -1,7 +1,8 @@
-// Lista estilo extrato, separada por dia ("Hoje", "Ontem", "25 de outubro")
-import { Trash2 } from "lucide-react";
+// Lista estilo extrato, separada por dia ("Hoje", "Ontem", "25 de outubro").
+// Tocar num lançamento abre a tela de editar.
+import { ChevronRight } from "lucide-react";
+import Link from "next/link";
 
-import { deleteTransaction } from "@/app/actions";
 import { CategoryIcon } from "@/components/category-icon";
 import { categoryName } from "@/lib/categories";
 import type { Transaction } from "@/lib/db";
@@ -11,12 +12,10 @@ export function TransactionList({
   transactions,
   today,
   fmt,
-  allowDelete = false,
 }: {
   transactions: Transaction[];
   today: Date;
   fmt: (cents: number) => string;
-  allowDelete?: boolean;
 }) {
   const days = new Map<string, Transaction[]>();
   for (const t of transactions) {
@@ -35,25 +34,18 @@ export function TransactionList({
             {items.map((t) => {
               const name = categoryName(t.category);
               return (
-                <li key={t.id} className="flex items-center gap-3 py-2">
-                  <CategoryIcon category={t.category} />
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate font-semibold">{t.description || name}</p>
-                    <p className="text-sm text-muted">{name}</p>
-                  </div>
-                  <p className={`font-semibold whitespace-nowrap ${t.kind === "income" ? "text-income" : "text-expense"}`}>
-                    {t.kind === "income" ? "+" : "-"} {fmt(t.amountCents)}
-                  </p>
-                  {allowDelete && (
-                    <form action={deleteTransaction.bind(null, t.id)}>
-                      <button
-                        aria-label="Apagar"
-                        className="flex h-9 w-9 items-center justify-center rounded-full text-muted hover:bg-card hover:text-expense"
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    </form>
-                  )}
+                <li key={t.id}>
+                  <Link href={`/lancamento/${t.id}`} className="-mx-2 flex items-center gap-3 rounded-2xl px-2 py-2 transition-colors hover:bg-card active:bg-card">
+                    <CategoryIcon category={t.category} />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate font-semibold">{t.description || name}</p>
+                      <p className="text-sm text-muted">{name}</p>
+                    </div>
+                    <p className={`font-semibold whitespace-nowrap ${t.kind === "income" ? "text-income" : "text-expense"}`}>
+                      {t.kind === "income" ? "+" : "-"} {fmt(t.amountCents)}
+                    </p>
+                    <ChevronRight size={18} className="flex-none text-muted" />
+                  </Link>
                 </li>
               );
             })}

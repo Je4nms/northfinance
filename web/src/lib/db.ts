@@ -147,3 +147,126 @@ export async function shouldAskEnjoying(email: string): Promise<boolean> {
 export async function setEnjoying(email: string, answer: string): Promise<void> {
   await sql`UPDATE members SET enjoying = ${answer} WHERE email = ${email}`;
 }
+
+// --- Editar lançamento ---
+
+export async function getTransaction(owner: string, id: number): Promise<Transaction | null> {
+  const rows = await sql`
+    SELECT id, kind, amount_cents, category, description, occurred_on
+    FROM transactions WHERE id = ${id} AND owner = ${owner}
+  `;
+  return rows[0] ? toTransaction(rows[0]) : null;
+}
+
+/** O "owner" no WHERE garante que ninguém edita o lançamento de outra pessoa. */
+export async function updateTransaction(
+  owner: string,
+  id: number,
+  t: { kind: Kind; amountCents: number; category: string; description: string | null; occurredOn: string },
+): Promise<void> {
+  await sql`
+    UPDATE transactions
+    SET kind = ${t.kind}, amount_cents = ${t.amountCents}, category = ${t.category},
+        description = ${t.description}, occurred_on = ${t.occurredOn}
+    WHERE id = ${id} AND owner = ${owner}
+  `;
+}
+
+// --- Gráfico por dia e comparação com o mês passado ---
+
+/** Quanto foi gasto em cada dia do período: { "2026-10-05": 12345, ... } */
+export async function expensesByDay(owner: string, start: Date, end: Date): Promise<Map<string, number>> {
+  const rows = await sql`
+    SELECT occurred_on::text AS day, SUM(amount_cents)::int AS total
+    FROM transactions
+    WHERE owner = ${owner} AND kind = 'expense' AND occurred_on >= ${start} AND occurred_on < ${end}
+    GROUP BY occurred_on
+  `;
+  return new Map(rows.map((r) => [r.day as string, r.total as number]));
+}
+
+export async function expensesBetween(owner: string, start: Date, end: Date): Promise<number> {
+  const rows = await sql`
+    SELECT COALESCE(SUM(amount_cents), 0)::int AS total
+    FROM transactions
+    WHERE owner = ${owner} AND kind = 'expense' AND occurred_on >= ${start} AND occurred_on < ${end}
+  `;
+  return rows[0].total;
+}
+
+// --- Gastos fixos (lançados sozinhos todo mês) ---
+// A tabela recurring_transactions é criada pelo SQL do README (o usuário limitado não cria tabelas).
+
+export type Recurring = {
+  id: number;
+  kind: Kind;
+  amountCents: number;
+  category: string;
+  description: string | null;
+  dayOfMonth: number;
+};
+
+async function recurringReady(): Promise<boolean> {
+  const [{ ok }] = await sql`SELECT to_regclass('recurring_transactions') IS NOT NULL AS ok`;
+  return ok;
+}
+
+export async function listRecurring(owner: string): Promise<Recurring[]> {
+  if (!(await recurringReady())) return [];
+  const rows = await sql`
+    SELECT id, kind, amount_cents, category, description, day_of_month
+    FROM recurring_transactions WHERE owner = ${owner} ORDER BY day_of_month, id
+  `;
+  return rows.map((r) => ({
+    id: r.id,
+    kind: r.kind,
+    amountCents: r.amount_cents,
+    category: r.category,
+    description: r.description,
+    dayOfMonth: r.day_of_month,
+  }));
+}
+
+/** Guarda um gasto fixo. O lançamento deste mês é feito junto, então ele começa a valer no próximo. */
+export async function addRecurring(
+  owner: string,
+  t: { kind: Kind; amountCents: number; category: string; description: string | null; dayOfMonth: number; startMonth: string },
+): Promise<boolean> {
+  if (!(await recurringReady())) return false;
+  await sql`
+    INSERT INTO recurring_transactions (owner, kind, amount_cents, category, description, day_of_month, last_month)
+    VALUES (${owner}, ${t.kind}, ${t.amountCents}, ${t.category}, ${t.description}, ${t.dayOfMonth}, ${t.startMonth})
+  `;
+  return true;
+}
+
+export async function deleteRecurring(owner: string, id: number): Promise<void> {
+  await sql`DELETE FROM recurring_transactions WHERE id = ${id} AND owner = ${owner}`;
+}
+
+/**
+ * Lança os gastos fixos que já "venceram" neste mês e ainda não foram lançados.
+ * Roda sempre que a pessoa abre o Início. `month` é o primeiro dia do mês atual.
+ */
+export async function runRecurring(owner: string, today: Date): Promise<void> {
+  if (!(await recurringReady())) return;
+  const month = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), 1));
+  const lastDay = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth() + 1, 0)).getUTCDate();
+  await sql.begin(async (tx) => {
+    const due = await tx`
+      SELECT id, kind, amount_cents, category, description, day_of_month
+      FROM recurring_transactions
+      WHERE owner = ${owner} AND last_month < ${month}
+        AND LEAST(day_of_month, ${lastDay}) <= ${today.getUTCDate()}
+      FOR UPDATE
+    `;
+    for (const r of due) {
+      const day = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), Math.min(r.day_of_month, lastDay)));
+      await tx`
+        INSERT INTO transactions (owner, kind, amount_cents, category, description, occurred_on)
+        VALUES (${owner}, ${r.kind}, ${r.amount_cents}, ${r.category}, ${r.description}, ${day})
+      `;
+      await tx`UPDATE recurring_transactions SET last_month = ${month} WHERE id = ${r.id}`;
+    }
+  });
+}
