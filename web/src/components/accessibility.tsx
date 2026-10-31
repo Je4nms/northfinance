@@ -52,9 +52,9 @@ export function AccessibilityButton({ variant = "icon" }: { variant?: "icon" | "
           type="button"
           onClick={() => setOpen(true)}
           aria-label="Acessibilidade"
-          className="flex h-11 w-11 items-center justify-center rounded-full border border-line bg-bg/60 backdrop-blur"
+          className="flex h-13 w-13 items-center justify-center rounded-full border border-line bg-bg/60 backdrop-blur"
         >
-          <Accessibility size={20} />
+          <Accessibility size={26} />
         </button>
       ) : (
         <button type="button" onClick={() => setOpen(true)} className="flex w-full items-center gap-2 text-left font-bold">

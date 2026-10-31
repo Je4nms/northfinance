@@ -59,8 +59,8 @@ async function Home({ searchParams }: { searchParams: PageProps<"/">["searchPara
         </p>
         <AccessibilityButton />
         <form action={toggleValues}>
-          <button aria-label={hide ? "Mostrar valores" : "Esconder valores"} className="flex h-11 w-11 items-center justify-center rounded-full border border-line bg-bg/60 backdrop-blur">
-            {hide ? <EyeOff size={20} /> : <Eye size={20} />}
+          <button aria-label={hide ? "Mostrar valores" : "Esconder valores"} className="flex h-13 w-13 items-center justify-center rounded-full border border-line bg-bg/60 backdrop-blur">
+            {hide ? <EyeOff size={24} /> : <Eye size={24} />}
           </button>
         </form>
       </header>
