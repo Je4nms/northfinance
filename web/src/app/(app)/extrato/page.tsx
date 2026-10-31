@@ -92,7 +92,7 @@ async function Statement({ searchParams }: { searchParams: Promise<Params> }) {
           <Link href={link(params, { mes: monthParam(shiftMonth(month!, -1)) })} aria-label="Mês anterior" className="rounded-full p-1.5 text-muted hover:bg-card"><ChevronLeft size={20} /></Link>
           <span>{monthName(month!)}</span>
           {isCurrentMonth ? (
-            <span className="p-1.5 text-muted/30"><ChevronRight size={20} /></span>
+            <span className="p-1.5 text-muted/40"><ChevronRight size={20} /></span>
           ) : (
             <Link href={link(params, { mes: monthParam(shiftMonth(month!, 1)) })} aria-label="Próximo mês" className="rounded-full p-1.5 text-muted hover:bg-card"><ChevronRight size={20} /></Link>
           )}
