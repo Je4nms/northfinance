@@ -4,7 +4,6 @@ import Link from "next/link";
 import { Suspense } from "react";
 
 import { leave } from "@/app/actions";
-import { AccessibilityButton } from "@/components/accessibility";
 import { LoadingLogo } from "@/components/loading-logo";
 import { CopyButton, FeedbackForm } from "@/components/menu-client";
 import { currentMember } from "@/lib/session";
@@ -55,11 +54,6 @@ async function Menu({ searchParams }: { searchParams: PageProps<"/menu">["search
             WhatsApp
           </a>
         </div>
-      </section>
-
-      <section className={card}>
-        <AccessibilityButton variant="row" />
-        <p className="text-sm text-muted">Tamanho do texto e alto contraste.</p>
       </section>
 
       <section id="sugestao" className={card}>
