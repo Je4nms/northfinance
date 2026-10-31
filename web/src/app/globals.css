@@ -98,9 +98,34 @@ body {
   to { transform: rotate(0deg); }
 }
 
+/* Carregamento: o marcador do norte fica girando */
+.nf-needle-spin {
+  transform-box: view-box;
+  transform-origin: 100px 104px;
+  animation: nf-spin 1.1s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite;
+}
+
+@keyframes nf-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Entrada suave das telas */
+.nf-fade-in {
+  animation: nf-fade-in 0.25s ease-out both;
+}
+
+@keyframes nf-fade-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .nf-aurora::before,
-  .nf-needle {
+  .nf-needle,
+  .nf-fade-in {
     animation: none;
+  }
+  .nf-needle-spin {
+    animation-duration: 3s;
   }
 }

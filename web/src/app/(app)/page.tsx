@@ -1,25 +1,24 @@
 // Início: saudação, saldo do mês, meta, para onde foi o dinheiro e últimos lançamentos
+import { ChevronLeft, ChevronRight, Eye, EyeOff, Target } from "lucide-react";
 import { cookies } from "next/headers";
 import Link from "next/link";
 import { Suspense } from "react";
 
 import { answerEnjoying, saveGoal, toggleValues } from "@/app/actions";
+import { CategoryIcon } from "@/components/category-icon";
+import { LoadingLogo } from "@/components/loading-logo";
 import { TransactionList } from "@/components/transaction-list";
-import { categoryColor, splitCategory } from "@/lib/categories";
+import { categoryColor, categoryName } from "@/lib/categories";
 import * as db from "@/lib/db";
 import { greeting, monthName, monthParam, monthRange, parseMonth, shiftMonth, todayInSaoPaulo, toBRL } from "@/lib/money";
 import { currentMember } from "@/lib/session";
 
 export default function Page({ searchParams }: PageProps<"/">) {
   return (
-    <Suspense fallback={<Loading />}>
+    <Suspense fallback={<LoadingLogo fullScreen />}>
       <Home searchParams={searchParams} />
     </Suspense>
   );
-}
-
-function Loading() {
-  return <div className="flex h-[60dvh] items-center justify-center"><img src="/logo.svg" alt="" className="h-14 w-14 animate-pulse" /></div>;
 }
 
 async function Home({ searchParams }: { searchParams: PageProps<"/">["searchParams"] }) {
@@ -43,7 +42,7 @@ async function Home({ searchParams }: { searchParams: PageProps<"/">["searchPara
   const balance = totals.income - totals.expense;
 
   return (
-    <div className="space-y-5">
+    <div className="nf-fade-in space-y-5">
       {/* Topo: foto, saudação e o olho que esconde os valores */}
       <header className="flex items-center gap-3.5">
         {member.image ? (
@@ -59,10 +58,7 @@ async function Home({ searchParams }: { searchParams: PageProps<"/">["searchPara
         </p>
         <form action={toggleValues}>
           <button aria-label={hide ? "Mostrar valores" : "Esconder valores"} className="flex h-11 w-11 items-center justify-center rounded-full border border-line bg-bg/60 backdrop-blur">
-            <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round">
-              <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" />
-              {hide ? <path d="M3 3l18 18" /> : <circle cx="12" cy="12" r="3" />}
-            </svg>
+            {hide ? <EyeOff size={20} /> : <Eye size={20} />}
           </button>
         </form>
       </header>
@@ -72,7 +68,7 @@ async function Home({ searchParams }: { searchParams: PageProps<"/">["searchPara
           <p className="font-bold">Está curtindo o NorthFinance?</p>
           <p className="text-sm text-muted">A sua opinião ajuda a deixar o app melhor.</p>
           <div className="mt-3 flex flex-wrap gap-2">
-            <form action={answerEnjoying.bind(null, "sim")}><button className="rounded-full bg-primary px-4 py-2 font-semibold text-white">Sim! 😍</button></form>
+            <form action={answerEnjoying.bind(null, "sim")}><button className="rounded-full bg-primary px-4 py-2 font-semibold text-white">Sim, estou curtindo</button></form>
             <form action={answerEnjoying.bind(null, "sugestao")}><button className="rounded-full border border-line px-4 py-2 font-semibold">Tenho uma sugestão</button></form>
             <form action={answerEnjoying.bind(null, "agora_nao")}><button className="px-3 py-2 text-muted">Agora não</button></form>
           </div>
@@ -83,12 +79,12 @@ async function Home({ searchParams }: { searchParams: PageProps<"/">["searchPara
         <div className="space-y-5">
           {/* Troca de mês */}
           <nav className="flex items-center justify-center gap-4 font-bold">
-            <Link href={`/?mes=${monthParam(shiftMonth(month, -1))}`} aria-label="Mês anterior" className="rounded-full px-3 py-1 text-muted">‹</Link>
+            <Link href={`/?mes=${monthParam(shiftMonth(month, -1))}`} aria-label="Mês anterior" className="rounded-full p-1.5 text-muted hover:bg-card"><ChevronLeft size={20} /></Link>
             <span>{monthName(month)}</span>
             {isCurrentMonth ? (
-              <span className="px-3 py-1 text-muted/30">›</span>
+              <span className="p-1.5 text-muted/30"><ChevronRight size={20} /></span>
             ) : (
-              <Link href={`/?mes=${monthParam(shiftMonth(month, 1))}`} aria-label="Próximo mês" className="rounded-full px-3 py-1 text-muted">›</Link>
+              <Link href={`/?mes=${monthParam(shiftMonth(month, 1))}`} aria-label="Próximo mês" className="rounded-full p-1.5 text-muted hover:bg-card"><ChevronRight size={20} /></Link>
             )}
           </nav>
 
@@ -108,7 +104,7 @@ async function Home({ searchParams }: { searchParams: PageProps<"/">["searchPara
             </div>
           </div>
 
-          {isCurrentMonth && !hide && <Goal spent={totals.expense} goal={goal} />}
+          {isCurrentMonth && !hide && <Goal spent={totals.expense} goal={goal} today={today} />}
 
           {byCategory.length > 0 && (
             <section>
@@ -120,9 +116,9 @@ async function Home({ searchParams }: { searchParams: PageProps<"/">["searchPara
               </div>
               <ul className="mt-3 divide-y divide-line">
                 {byCategory.map((c) => (
-                  <li key={c.category} className="flex items-center gap-2.5 py-2">
-                    <span className="h-2.5 w-2.5 rounded-full" style={{ background: categoryColor(c.category) }} />
-                    <span className="flex-1">{splitCategory(c.category)[1]}</span>
+                  <li key={c.category} className="flex items-center gap-3 py-2">
+                    <CategoryIcon category={c.category} size={36} />
+                    <span className="flex-1">{categoryName(c.category)}</span>
                     <span className="text-sm text-muted">{Math.round((c.totalCents / totals.expense) * 100)}%</span>
                     <span className="min-w-24 text-right font-semibold">{fmt(c.totalCents)}</span>
                   </li>
@@ -147,12 +143,15 @@ async function Home({ searchParams }: { searchParams: PageProps<"/">["searchPara
   );
 }
 
-/** Meta do mês: barra verde até 80%, laranja até 100%, vermelha quando passa. Editável ali mesmo. */
-function Goal({ spent, goal }: { spent: number; goal: number | null }) {
+/**
+ * Meta do mês: anel de progresso (verde até 80%, laranja até 100%, vermelho quando passa),
+ * quanto ainda dá para gastar, quanto isso dá por dia e a previsão para o fim do mês.
+ */
+function Goal({ spent, goal, today }: { spent: number; goal: number | null; today: Date }) {
   const editor = (
     <details className="group">
       <summary className="cursor-pointer list-none text-sm font-semibold text-primary">
-        {goal ? "Editar meta" : "🎯 Definir uma meta para o mês"}
+        {goal ? "Editar meta" : "Definir"}
       </summary>
       <form action={saveGoal} className="mt-3 flex gap-2">
         <input
@@ -168,21 +167,68 @@ function Goal({ spent, goal }: { spent: number; goal: number | null }) {
     </details>
   );
 
-  if (!goal) return <div className="rounded-3xl border border-dashed border-line p-4">{editor}</div>;
+  if (!goal) {
+    return (
+      <div className="flex items-start gap-3 rounded-3xl border border-dashed border-line p-4">
+        <span className="flex h-11 w-11 flex-none items-center justify-center rounded-full bg-primary/15 text-primary"><Target size={20} /></span>
+        <div className="flex-1">
+          <p className="font-bold">Defina uma meta para o mês</p>
+          <p className="mb-2 text-sm text-muted">Quanto você quer gastar, no máximo? O app te avisa quando estiver chegando perto.</p>
+          {editor}
+        </div>
+      </div>
+    );
+  }
 
   const share = spent / goal;
-  const color = share < 0.8 ? "bg-income" : share <= 1 ? "bg-warning" : "bg-expense";
-  const note = share <= 1 ? `Faltam ${toBRL(goal - spent)}` : `Passou ${toBRL(spent - goal)} da meta`;
+  const tone = share < 0.8 ? "var(--income)" : share <= 1 ? "var(--warning)" : "var(--expense)";
+  const daysInMonth = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth() + 1, 0)).getUTCDate();
+  const day = today.getUTCDate();
+  const daysLeft = daysInMonth - day + 1;
+  const left = goal - spent;
+  const projection = Math.round((spent / day) * daysInMonth);
+
+  // Anel: um círculo cujo contorno vai "enchendo" conforme o gasto
+  const radius = 34;
+  const circumference = 2 * Math.PI * radius;
+  const filled = Math.min(share, 1) * circumference;
+
   return (
-    <div className="space-y-2 rounded-3xl bg-card p-4">
-      <div className="flex justify-between text-sm text-muted">
-        <span>Meta do mês</span>
-        <span>{toBRL(spent)} de {toBRL(goal)} ({Math.round(share * 100)}%)</span>
+    <div className="space-y-4 rounded-3xl bg-card p-4">
+      <div className="flex items-center gap-4">
+        <div className="relative h-24 w-24 flex-none">
+          <svg viewBox="0 0 80 80" className="h-full w-full -rotate-90">
+            <circle cx="40" cy="40" r={radius} fill="none" stroke="var(--border)" strokeWidth="8" />
+            <circle cx="40" cy="40" r={radius} fill="none" stroke={tone} strokeWidth="8" strokeLinecap="round"
+              strokeDasharray={`${filled} ${circumference}`} />
+          </svg>
+          <span className="absolute inset-0 flex items-center justify-center text-lg font-extrabold">{Math.round(share * 100)}%</span>
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-sm text-muted">Meta do mês · {toBRL(goal)}</p>
+          {left >= 0 ? (
+            <>
+              <p className="text-2xl leading-tight font-extrabold">{toBRL(left)}</p>
+              <p className="text-sm text-muted">ainda dá para gastar</p>
+            </>
+          ) : (
+            <>
+              <p className="text-2xl leading-tight font-extrabold text-expense">{toBRL(-left)}</p>
+              <p className="text-sm text-muted">acima da meta</p>
+            </>
+          )}
+        </div>
       </div>
-      <div className="h-2 overflow-hidden rounded-full bg-line">
-        <div className={`h-full rounded-full ${color}`} style={{ width: `${Math.min(share, 1) * 100}%` }} />
+      <div className="grid grid-cols-2 gap-2 text-sm">
+        <div className="rounded-2xl bg-bg/60 p-3">
+          <p className="text-muted">Por dia, até o fim do mês</p>
+          <p className="font-bold">{left > 0 ? toBRL(Math.floor(left / daysLeft)) : "R$ 0,00"}</p>
+        </div>
+        <div className="rounded-2xl bg-bg/60 p-3">
+          <p className="text-muted">Nesse ritmo, você fecha em</p>
+          <p className="font-bold" style={{ color: projection > goal ? "var(--expense)" : undefined }}>{toBRL(projection)}</p>
+        </div>
       </div>
-      <p className={`text-sm font-semibold ${share < 0.8 ? "" : share <= 1 ? "text-warning" : "text-expense"}`}>{note}</p>
       {editor}
     </div>
   );

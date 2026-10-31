@@ -2,10 +2,12 @@
 // Tudo fica no endereço (ex.: /extrato?de=2026-09-28&ate=2026-09-28&tipo=expense),
 // então dá para voltar, atualizar a página ou mandar o link.
 import { cookies } from "next/headers";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { Suspense } from "react";
 
 import { Brand } from "@/components/brand";
+import { LoadingLogo } from "@/components/loading-logo";
 import { TransactionList } from "@/components/transaction-list";
 import * as db from "@/lib/db";
 import { isoDate, monthName, monthParam, monthRange, parseMonth, shiftMonth, todayInSaoPaulo, toBRL } from "@/lib/money";
@@ -15,10 +17,10 @@ type Params = Record<string, string | string[] | undefined>;
 
 export default function Page({ searchParams }: PageProps<"/extrato">) {
   return (
-    <div className="space-y-4">
+    <div className="nf-fade-in space-y-4">
       <Brand />
       <h1 className="text-3xl font-extrabold tracking-tight">Extrato</h1>
-      <Suspense>
+      <Suspense fallback={<LoadingLogo />}>
         <Statement searchParams={searchParams} />
       </Suspense>
     </div>
@@ -87,12 +89,12 @@ async function Statement({ searchParams }: { searchParams: Promise<Params> }) {
         </form>
       ) : (
         <nav className="flex items-center justify-center gap-4 font-bold">
-          <Link href={link(params, { mes: monthParam(shiftMonth(month!, -1)) })} aria-label="Mês anterior" className="px-3 py-1 text-muted">‹</Link>
+          <Link href={link(params, { mes: monthParam(shiftMonth(month!, -1)) })} aria-label="Mês anterior" className="rounded-full p-1.5 text-muted hover:bg-card"><ChevronLeft size={20} /></Link>
           <span>{monthName(month!)}</span>
           {isCurrentMonth ? (
-            <span className="px-3 py-1 text-muted/30">›</span>
+            <span className="p-1.5 text-muted/30"><ChevronRight size={20} /></span>
           ) : (
-            <Link href={link(params, { mes: monthParam(shiftMonth(month!, 1)) })} aria-label="Próximo mês" className="px-3 py-1 text-muted">›</Link>
+            <Link href={link(params, { mes: monthParam(shiftMonth(month!, 1)) })} aria-label="Próximo mês" className="rounded-full p-1.5 text-muted hover:bg-card"><ChevronRight size={20} /></Link>
           )}
         </nav>
       )}

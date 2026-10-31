@@ -1,8 +1,10 @@
 // Menu no estilo "perfil": foto, nome e as opções em blocos
+import { ChevronRight, Info, LogOut, MessageSquare, UserPlus } from "lucide-react";
 import Link from "next/link";
 import { Suspense } from "react";
 
 import { leave } from "@/app/actions";
+import { LoadingLogo } from "@/components/loading-logo";
 import { CopyButton, FeedbackForm } from "@/components/menu-client";
 import { currentMember } from "@/lib/session";
 
@@ -10,7 +12,7 @@ const APP_URL = process.env.APP_URL ?? "https://northfinancebr.streamlit.app/?em
 
 export default function Page({ searchParams }: PageProps<"/menu">) {
   return (
-    <Suspense>
+    <Suspense fallback={<LoadingLogo fullScreen />}>
       <Menu searchParams={searchParams} />
     </Suspense>
   );
@@ -25,7 +27,7 @@ async function Menu({ searchParams }: { searchParams: PageProps<"/menu">["search
   const card = "space-y-3 rounded-3xl bg-card p-4";
 
   return (
-    <div className="mx-auto max-w-[520px] space-y-4">
+    <div className="nf-fade-in mx-auto max-w-[520px] space-y-4">
       <header className="flex flex-col items-center gap-2 pt-2 pb-2 text-center">
         {member.image ? (
           <img src={member.image} alt="" referrerPolicy="no-referrer" className="h-24 w-24 rounded-full object-cover ring-4 ring-white/15" />
@@ -39,11 +41,11 @@ async function Menu({ searchParams }: { searchParams: PageProps<"/menu">["search
       </header>
 
       {params.curtiu && (
-        <p className="rounded-3xl bg-primary/15 p-4 font-semibold">Que bom que você está curtindo! 💚 Que tal convidar um amigo?</p>
+        <p className="rounded-3xl bg-primary/15 p-4 font-semibold">Que bom que você está curtindo! Que tal convidar um amigo?</p>
       )}
 
       <section className={card}>
-        <h2 className="font-bold">👋 Convidar alguém</h2>
+        <h2 className="flex items-center gap-2 font-bold"><UserPlus size={18} className="text-primary" /> Convidar alguém</h2>
         <p className="text-sm text-muted">A mensagem já vai com o link e o código de convite.</p>
         <p className="rounded-2xl bg-bg p-3 text-sm">{invite}</p>
         <div className="flex gap-2">
@@ -55,18 +57,18 @@ async function Menu({ searchParams }: { searchParams: PageProps<"/menu">["search
       </section>
 
       <section id="sugestao" className={card}>
-        <h2 className="font-bold">💬 Enviar sugestão</h2>
+        <h2 className="flex items-center gap-2 font-bold"><MessageSquare size={18} className="text-primary" /> Enviar sugestão</h2>
         <FeedbackForm />
       </section>
 
       <section className={card}>
-        <h2 className="font-bold">ℹ️ Sobre o NorthFinance</h2>
+        <h2 className="flex items-center gap-2 font-bold"><Info size={18} className="text-primary" /> Sobre o NorthFinance</h2>
         <p className="text-sm text-muted">O app de finanças mais simples que existe: anote o que entra e o que sai, e veja para onde o dinheiro está indo.</p>
-        <Link href="/privacidade" className="block text-sm font-semibold text-primary">Política de Privacidade ›</Link>
+        <Link href="/privacidade" className="flex items-center justify-between text-sm font-semibold text-primary">Política de Privacidade <ChevronRight size={16} /></Link>
       </section>
 
       <form action={leave}>
-        <button className="w-full rounded-3xl border border-line py-3.5 font-semibold text-expense">Sair</button>
+        <button className="flex w-full items-center justify-center gap-2 rounded-3xl border border-line py-3.5 font-semibold text-expense"><LogOut size={18} /> Sair</button>
       </form>
     </div>
   );

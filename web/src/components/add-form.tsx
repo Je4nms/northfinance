@@ -3,7 +3,8 @@
 import { useActionState, useState } from "react";
 
 import { addTransaction, type FormState } from "@/app/actions";
-import { EXPENSE_CATEGORIES, INCOME_CATEGORIES } from "@/lib/categories";
+import { CategoryGlyph } from "@/components/category-icon";
+import { categoryName, EXPENSE_CATEGORIES, INCOME_CATEGORIES } from "@/lib/categories";
 
 export function AddForm({ today }: { today: string }) {
   const [kind, setKind] = useState<"expense" | "income">("expense");
@@ -44,8 +45,9 @@ export function AddForm({ today }: { today: string }) {
           {categories.map((c) => (
             <label key={c} className="cursor-pointer">
               <input type="radio" name="category" value={c} className="peer sr-only" required />
-              <span className="block rounded-full border border-line px-3.5 py-2 peer-checked:border-primary peer-checked:bg-primary/15 peer-checked:font-semibold">
-                {c}
+              <span className="flex items-center gap-2 rounded-full border border-line px-3.5 py-2 transition-colors peer-checked:border-primary peer-checked:bg-primary/15 peer-checked:font-semibold">
+                <CategoryGlyph category={c} />
+                {categoryName(c)}
               </span>
             </label>
           ))}
@@ -63,7 +65,7 @@ export function AddForm({ today }: { today: string }) {
       </label>
 
       {state.error && <p className="font-semibold text-expense">{state.error}</p>}
-      {state.ok && <p className="font-semibold text-income">✓ {state.ok}</p>}
+      {state.ok && <p className="font-semibold text-income">{state.ok}</p>}
 
       <button disabled={pending} className="w-full rounded-2xl bg-primary py-4 text-lg font-bold text-white disabled:opacity-60">
         {pending ? "Salvando..." : "Salvar"}
