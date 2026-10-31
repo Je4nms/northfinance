@@ -9,7 +9,7 @@ import { redirect } from "next/navigation";
 import { signIn, signOut } from "@/auth";
 import { EXPENSE_CATEGORIES, INCOME_CATEGORIES } from "@/lib/categories";
 import * as db from "@/lib/db";
-import { parseBRL } from "@/lib/money";
+import { parseBRL, todayInSaoPaulo } from "@/lib/money";
 import { currentMember, currentUser } from "@/lib/session";
 
 export async function enter() {
@@ -22,13 +22,22 @@ export async function leave() {
 
 export type FormState = { error?: string; ok?: string };
 
+// Maior valor aceito num lançamento ou na meta: R$ 1.000.000,00
+const MAX_CENTS = 100_000_000;
+
 export async function acceptInvite(_: FormState, form: FormData): Promise<FormState> {
   const user = await currentUser();
   if (!user) redirect("/entrar");
-  const code = String(form.get("code") ?? "").trim().toUpperCase();
+  if (await db.inviteAttemptsBlocked(user.email)) {
+    return { error: "Muitas tentativas. Espere 15 minutos e tente de novo." };
+  }
+  const code = String(form.get("code") ?? "").trim().toUpperCase().slice(0, 64);
   const expected = (process.env.INVITE_CODE ?? "").trim().toUpperCase();
   const same = code.length === expected.length && timingSafeEqual(Buffer.from(code), Buffer.from(expected));
-  if (!expected || !same) return { error: "Código errado. Peça o código para quem te convidou." };
+  if (!expected || !same) {
+    await db.recordFailedInvite(user.email);
+    return { error: "Código errado. Peça o código para quem te convidou." };
+  }
   await db.addMember(user.email, user.name);
   redirect("/");
 }
@@ -43,8 +52,12 @@ export async function addTransaction(_: FormState, form: FormData): Promise<Form
   const allowed = kind === "income" ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
 
   if (!amountCents || amountCents <= 0) return { error: "Coloque o valor." };
+  if (amountCents > MAX_CENTS) return { error: "Valor alto demais. O máximo é R$ 1.000.000,00." };
   if (!allowed.includes(category)) return { error: "Escolha uma categoria." };
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(occurredOn)) return { error: "Escolha a data." };
+  const day = /^\d{4}-\d{2}-\d{2}$/.test(occurredOn) ? new Date(occurredOn + "T00:00:00Z") : null;
+  if (!day || isNaN(day.getTime()) || day > todayInSaoPaulo() || day.getUTCFullYear() < 2000) {
+    return { error: "Escolha uma data válida (não pode ser no futuro)." };
+  }
 
   await db.addTransaction(member.email, { kind, amountCents, category, description, occurredOn });
   return { ok: `${kind === "income" ? "Ganho" : "Gasto"} salvo` };
@@ -52,6 +65,7 @@ export async function addTransaction(_: FormState, form: FormData): Promise<Form
 
 export async function deleteTransaction(id: number) {
   const member = await currentMember();
+  if (!Number.isSafeInteger(id)) return;
   await db.deleteTransaction(member.email, id);
   refresh();
 }
@@ -59,7 +73,7 @@ export async function deleteTransaction(id: number) {
 export async function saveGoal(form: FormData) {
   const member = await currentMember();
   const cents = parseBRL(String(form.get("goal") ?? ""));
-  await db.setGoal(member.email, cents > 0 ? cents : null);
+  await db.setGoal(member.email, cents > 0 && cents <= MAX_CENTS ? cents : null);
   refresh();
 }
 
