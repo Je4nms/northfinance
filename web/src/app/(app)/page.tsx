@@ -5,7 +5,6 @@ import Link from "next/link";
 import { Suspense } from "react";
 
 import { answerEnjoying, saveGoal, toggleValues } from "@/app/actions";
-import { AccessibilityButton } from "@/components/accessibility";
 import { CategoryIcon } from "@/components/category-icon";
 import { LoadingLogo } from "@/components/loading-logo";
 import { TransactionList } from "@/components/transaction-list";
@@ -57,7 +56,6 @@ async function Home({ searchParams }: { searchParams: PageProps<"/">["searchPara
           {greeting()},<br />
           <b className="font-extrabold">{member.firstName}</b>
         </p>
-        <AccessibilityButton />
         <form action={toggleValues}>
           <button aria-label={hide ? "Mostrar valores" : "Esconder valores"} className="flex h-13 w-13 items-center justify-center rounded-full border border-line bg-bg/60 backdrop-blur">
             {hide ? <EyeOff size={24} /> : <Eye size={24} />}
