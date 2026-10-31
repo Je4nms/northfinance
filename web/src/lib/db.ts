@@ -39,6 +39,32 @@ export async function addMember(email: string, name: string | null): Promise<voi
   await sql`INSERT INTO members (email, name) VALUES (${email}, ${name}) ON CONFLICT (email) DO NOTHING`;
 }
 
+/**
+ * Limite de tentativas do código de convite: no máximo 5 erros a cada 15 minutos por conta.
+ * Assim ninguém consegue ficar "chutando" códigos até acertar.
+ */
+export async function inviteAttemptsBlocked(email: string): Promise<boolean> {
+  // A tabela é criada uma vez só. Depois, o usuário limitado do banco (que não pode criar tabelas) só lê e escreve nela.
+  const [{ exists }] = await sql`SELECT to_regclass('invite_attempts') IS NOT NULL AS exists`;
+  if (!exists) {
+    await sql`
+      CREATE TABLE invite_attempts (
+        email VARCHAR(254) NOT NULL,
+        attempted_at TIMESTAMPTZ NOT NULL DEFAULT now()
+      )
+    `;
+  }
+  const rows = await sql`
+    SELECT COUNT(*)::int AS n FROM invite_attempts
+    WHERE email = ${email} AND attempted_at > now() - interval '15 minutes'
+  `;
+  return rows[0].n >= 5;
+}
+
+export async function recordFailedInvite(email: string): Promise<void> {
+  await sql`INSERT INTO invite_attempts (email) VALUES (${email})`;
+}
+
 // --- Lançamentos ---
 
 /** Lançamentos entre `start` (incluído) e `end` (não incluído), do mais novo ao mais antigo. */
