@@ -1,6 +1,9 @@
 // Lista estilo extrato, separada por dia ("Hoje", "Ontem", "25 de outubro")
+import { Trash2 } from "lucide-react";
+
 import { deleteTransaction } from "@/app/actions";
-import { splitCategory } from "@/lib/categories";
+import { CategoryIcon } from "@/components/category-icon";
+import { categoryName } from "@/lib/categories";
 import type { Transaction } from "@/lib/db";
 import { dayLabel, isoDate } from "@/lib/money";
 
@@ -30,10 +33,10 @@ export function TransactionList({
           </h3>
           <ul>
             {items.map((t) => {
-              const [icon, name] = splitCategory(t.category);
+              const name = categoryName(t.category);
               return (
                 <li key={t.id} className="flex items-center gap-3 py-2">
-                  <span className="flex h-11 w-11 flex-none items-center justify-center rounded-full bg-card text-xl">{icon}</span>
+                  <CategoryIcon category={t.category} />
                   <div className="min-w-0 flex-1">
                     <p className="truncate font-semibold">{t.description || name}</p>
                     <p className="text-sm text-muted">{name}</p>
@@ -47,9 +50,7 @@ export function TransactionList({
                         aria-label="Apagar"
                         className="flex h-9 w-9 items-center justify-center rounded-full text-muted hover:bg-card hover:text-expense"
                       >
-                        <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round">
-                          <path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3" />
-                        </svg>
+                        <Trash2 size={16} />
                       </button>
                     </form>
                   )}

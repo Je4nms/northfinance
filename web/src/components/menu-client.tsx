@@ -16,7 +16,7 @@ export function CopyButton({ text }: { text: string }) {
       }}
       className="flex-1 rounded-2xl border border-line py-3 font-semibold"
     >
-      {copied ? "✓ Copiado" : "Copiar"}
+      {copied ? "Copiado" : "Copiar"}
     </button>
   );
 }
@@ -37,7 +37,7 @@ export function FeedbackForm() {
         className="w-full rounded-2xl bg-bg px-4 py-3 outline-none"
       />
       {state.error && <p className="text-sm font-semibold text-expense">{state.error}</p>}
-      {state.ok && <p className="text-sm font-semibold text-income">✓ {state.ok}</p>}
+      {state.ok && <p className="text-sm font-semibold text-income">{state.ok}</p>}
       <button disabled={pending} className="w-full rounded-2xl border border-line py-3 font-semibold disabled:opacity-60">
         {pending ? "Enviando..." : "Enviar"}
       </button>
