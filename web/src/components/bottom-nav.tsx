@@ -21,7 +21,7 @@ export function BottomNav() {
             <li key={tab.href} className="flex-1">
               <Link
                 href={tab.href}
-                className={`flex flex-col items-center gap-0.5 rounded-xl py-1.5 text-xs font-semibold transition-colors ${
+                className={`flex flex-col items-center gap-0.5 rounded-xl py-1.5 text-[0.8rem] font-semibold transition-colors ${
                   active ? "text-primary" : "text-muted"
                 }`}
               >

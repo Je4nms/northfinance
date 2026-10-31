@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 
 import { answerEnjoying, saveGoal, toggleValues } from "@/app/actions";
+import { AccessibilityButton } from "@/components/accessibility";
 import { CategoryIcon } from "@/components/category-icon";
 import { LoadingLogo } from "@/components/loading-logo";
 import { TransactionList } from "@/components/transaction-list";
@@ -56,6 +57,7 @@ async function Home({ searchParams }: { searchParams: PageProps<"/">["searchPara
           {greeting()},<br />
           <b className="font-extrabold">{member.firstName}</b>
         </p>
+        <AccessibilityButton />
         <form action={toggleValues}>
           <button aria-label={hide ? "Mostrar valores" : "Esconder valores"} className="flex h-11 w-11 items-center justify-center rounded-full border border-line bg-bg/60 backdrop-blur">
             {hide ? <EyeOff size={20} /> : <Eye size={20} />}
@@ -82,7 +84,7 @@ async function Home({ searchParams }: { searchParams: PageProps<"/">["searchPara
             <Link href={`/?mes=${monthParam(shiftMonth(month, -1))}`} aria-label="Mês anterior" className="rounded-full p-1.5 text-muted hover:bg-card"><ChevronLeft size={20} /></Link>
             <span>{monthName(month)}</span>
             {isCurrentMonth ? (
-              <span className="p-1.5 text-muted/30"><ChevronRight size={20} /></span>
+              <span className="p-1.5 text-muted/40"><ChevronRight size={20} /></span>
             ) : (
               <Link href={`/?mes=${monthParam(shiftMonth(month, 1))}`} aria-label="Próximo mês" className="rounded-full p-1.5 text-muted hover:bg-card"><ChevronRight size={20} /></Link>
             )}
@@ -163,7 +165,7 @@ function Goal({ spent, goal, today }: { spent: number; goal: number | null; toda
         />
         <button className="rounded-xl bg-primary px-4 py-2 font-semibold text-white">Salvar</button>
       </form>
-      <p className="mt-1 text-xs text-muted">Deixe em branco para tirar a meta.</p>
+      <p className="mt-1 text-sm text-muted">Deixe em branco para tirar a meta.</p>
     </details>
   );
 

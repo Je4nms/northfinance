@@ -26,7 +26,16 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="pt-BR" className={`${sourceSans.variable} antialiased`}>
+    <html lang="pt-BR" className={`${sourceSans.variable} antialiased`} suppressHydrationWarning>
+      <head>
+        {/* Lê as escolhas de acessibilidade salvas no aparelho antes de desenhar a tela */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html:
+              "try{var d=document.documentElement;d.dataset.text=localStorage.getItem('nf-text')||'normal';d.dataset.contrast=localStorage.getItem('nf-contrast')||'normal'}catch(e){}",
+          }}
+        />
+      </head>
       <body className="font-sans">{children}</body>
     </html>
   );

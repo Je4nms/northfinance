@@ -6,7 +6,7 @@
   --fg: #101828;
   --card: #f3f5f7;
   --border: #e4e7eb;
-  --muted: #667085;
+  --muted: #5d6779;
   --income: #15803d;
   --expense: #d92d20;
   --warning: #b54708;
@@ -20,7 +20,7 @@
     --fg: #f0f2f5;
     --card: #1a1e26;
     --border: #2a303b;
-    --muted: #98a2b3;
+    --muted: #a9b2c1;
     --income: #4ade80;
     --expense: #f97066;
     --warning: #fdb022;
@@ -42,7 +42,9 @@
   --font-sans: var(--font-source-sans), system-ui, sans-serif;
 }
 
+/* Texto base um pouco maior (17px). Tudo no app usa "rem", então cresce junto. */
 html {
+  font-size: 106.25%;
   background: var(--bg);
   color: var(--fg);
   -webkit-tap-highlight-color: transparent;
@@ -50,6 +52,31 @@ html {
 
 body {
   min-height: 100dvh;
+}
+
+/* Acessibilidade: tamanho do texto (escolhido no painel) */
+html[data-text="grande"] { font-size: 118.75%; }
+html[data-text="extra"] { font-size: 131.25%; }
+
+/* Acessibilidade: alto contraste */
+html[data-contrast="alto"] {
+  --muted: #2b3240;
+  --border: #8a93a3;
+  --card: #e9edf2;
+}
+@media (prefers-color-scheme: dark) {
+  html[data-contrast="alto"] {
+    --muted: #e3e8ef;
+    --border: #6b7484;
+    --card: #232936;
+  }
+}
+
+/* Quem navega pelo teclado vê claramente onde está */
+:focus-visible {
+  outline: 3px solid var(--primary);
+  outline-offset: 2px;
+  border-radius: 8px;
 }
 
 /* Brilho azul e verde no topo das telas do app (parado) */

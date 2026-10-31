@@ -28,7 +28,7 @@ export function TransactionList({
     <div className="space-y-1">
       {[...days.entries()].map(([key, items]) => (
         <section key={key}>
-          <h3 className="mt-4 mb-1 text-xs font-bold tracking-wider text-muted uppercase">
+          <h3 className="mt-4 mb-1 text-sm font-bold tracking-wide text-muted uppercase">
             {dayLabel(new Date(key + "T00:00:00Z"), today)}
           </h3>
           <ul>
