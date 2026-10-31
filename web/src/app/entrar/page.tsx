@@ -4,12 +4,17 @@ import { Suspense } from "react";
 import { redirect } from "next/navigation";
 
 import { enter } from "@/app/actions";
+import { AccessibilityButton } from "@/components/accessibility";
 import { ANIMATED_LOGO } from "@/components/logo-markup";
 import { currentUser } from "@/lib/session";
 
 export default function Page() {
   return (
     <main className="nf-aurora relative isolate flex min-h-dvh flex-col items-center justify-center gap-6 overflow-hidden px-6 text-center">
+      {/* Acessibilidade discreta no canto, sem atrapalhar a tela de entrada */}
+      <div className="absolute top-[max(1rem,env(safe-area-inset-top))] right-4">
+        <AccessibilityButton />
+      </div>
       <div className="h-28 w-28" dangerouslySetInnerHTML={{ __html: ANIMATED_LOGO }} />
       <div>
         <h1 className="text-4xl tracking-tight"><b className="font-extrabold">North</b>Finance</h1>
