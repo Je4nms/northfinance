@@ -4,62 +4,89 @@
 
 > O app de finanças mais simples que existe.
 
-Eu usava um app de finanças com informação demais na tela, confuso e difícil de entender. O NorthFinance é a versão que eu queria usar: **anotar um gasto em segundos** e ver **para onde o dinheiro está indo**, sem bagunça.
+**🔗 [northfinance.vercel.app](https://northfinance.vercel.app)** · app instalável no celular (iPhone e Android) e no computador
 
-🚧 **Em construção.** Versão atual: login com Google, convite por código, anotar ganhos e gastos, resumo do mês e extrato, com visual de app no celular (claro ou escuro, conforme o aparelho).
+![Telas do NorthFinance: entrada, início, anotar e extrato](docs/telas.png)
 
-## Como usar no celular
+## Por que eu criei
 
-Abra **<https://northfinancebr.streamlit.app/?embed=true>** e adicione à tela inicial:
-- **iPhone (Safari):** Compartilhar → Adicionar à Tela de Início.
-- **Android (Chrome):** menu ⋮ → Adicionar à tela inicial.
+Eu usava um app de finanças com informação demais na tela, confuso e difícil de entender. O NorthFinance é a versão que eu queria usar: **anotar um gasto em segundos** e ver **para onde o dinheiro está indo**, sem bagunça. Hoje ele é usado por mim e pela minha família.
 
-O `?embed=true` no final esconde os selos do Streamlit Cloud, que ficariam por cima da barra de navegação.
-
-## Regra de ouro
-
-**Pouca informação na tela, fácil de entender de primeira.** Toda função nova precisa deixar o app mais simples, não mais bagunçado.
+**Regra de ouro do produto:** pouca bagunça na tela, fácil de entender de primeira. Toda função nova precisa deixar o app mais simples, não mais bagunçado.
 
 ## O que ele faz
 
-- **Anotar:** gasto ou ganho, com valor, categoria, descrição (opcional) e data.
-- **Início:** quanto sobrou no mês, ganhos, gastos e para onde foi o dinheiro.
-- **Extrato:** lançamentos separados por dia, por mês ou por um período escolhido no calendário, com filtro de ganhos e gastos e opção de apagar.
-- **Barra de navegação embaixo**, como num app de celular.
-- **Login com Google:** cada pessoa vê só os próprios lançamentos. O app nunca vê nem guarda senhas.
-- **Convite por código:** na primeira vez, a pessoa digita o código que recebeu de quem a convidou.
-- **Menu:** convidar pelo WhatsApp (mensagem pronta com link e código), enviar sugestões e ver a Política de Privacidade.
-- **Meta do mês:** a pessoa define no próprio Início quanto quer gastar no máximo, e ele mostra uma barra (verde, laranja a partir de 80%, vermelha quando passa).
-- **No computador**, o Início usa duas colunas: resumo de um lado, últimos lançamentos do outro.
+- **Início:** saldo do mês, ganhos e gastos, comparação com o mês anterior, gastos por dia e para onde foi o dinheiro por categoria.
+- **Meta do mês:** quanto ainda dá para gastar, quanto isso dá por dia e a previsão de fechamento.
+- **Anotar** um gasto ou ganho em poucos toques, com a opção de **repetir todo mês** (contas fixas são lançadas sozinhas).
+- **Extrato** por mês ou por período, com filtro, e **edição** de qualquer lançamento.
+- **Login com Google** e **convite por código**: cada pessoa vê só os próprios dados.
+- **Esconder valores** com um toque (para abrir o app perto dos outros).
+- **Acessibilidade:** tamanho do texto ajustável, alto contraste e compatível com leitor de tela.
+- **Claro ou escuro**, seguindo o celular. No computador, o layout aproveita a tela larga.
+
+## A história do projeto: de Python a app instalável
+
+| | Versão 1 | Versão 2 (atual) |
+|---|---|---|
+| **Objetivo** | Validar a ideia rápido, com usuários reais | Virar um app de verdade, instalável |
+| **Tecnologia** | Python + Streamlit | Next.js + TypeScript + Tailwind |
+| **Hospedagem** | Streamlit Community Cloud | Vercel (servidor em São Paulo) |
+| **Banco de dados** | PostgreSQL (Neon) | **O mesmo banco**: ninguém perdeu dados na troca |
+
+A versão 1 provou que a ideia funcionava e trouxe os primeiros feedbacks (visual "de rascunho", selos da hospedagem, app que não parecia app). A versão 2 foi reconstruída para resolver exatamente isso.
+
+## Segurança
+
+- Login pelo Google (OpenID Connect): o app **nunca vê nem guarda senhas**.
+- Toda consulta ao banco filtra pelo dono dos dados, inclusive editar e apagar.
+- Consultas parametrizadas (proteção contra *SQL injection*).
+- Limite de tentativas no código de convite.
+- Cabeçalhos de segurança: *Content Security Policy*, proteção contra *clickjacking* e HTTPS obrigatório.
+- Validação dos dados no servidor (valores e datas).
+- Dependabot avisando sobre atualizações de segurança.
+- Política de Privacidade alinhada à LGPD.
 
 ## Tecnologias
 
-| Tecnologia | Para quê |
+| Parte | Tecnologia |
 |---|---|
-| Python | Linguagem principal |
-| Streamlit | Transforma o código Python em site, que funciona no celular |
-| PostgreSQL (Neon) | Banco de dados online onde os gastos ficam salvos |
-| SQLAlchemy + SQL | Conversa com o banco de dados |
-| Login do Streamlit (OpenID Connect) | Entrar com a conta Google |
+| App (v2) | Next.js 16, React 19, TypeScript, Tailwind CSS, PWA |
+| Login | Auth.js (Google) |
+| Banco de dados | PostgreSQL no Neon, consultas em SQL |
+| Hospedagem | Vercel |
+| Versão 1 | Python, Streamlit, SQLAlchemy |
 
-## Como rodar
+## Estrutura
 
-1. Crie um banco gratuito em <https://neon.com> e copie a **connection string**.
-2. Copie o modelo das configurações e preencha:
-   ```bash
-   cp .streamlit/secrets.toml.example .streamlit/secrets.toml
-   ```
+```
+web/          → versão 2 (Next.js), a que está no ar
+web/sql/      → comandos SQL para preparar o banco
+app.py        → versão 1 (Streamlit)
+northfinance/ → código da versão 1
+```
+
+## Como rodar a versão 2
+
+1. Crie um banco gratuito em <https://neon.com> e um cliente OAuth no Google Cloud.
+2. Copie `web/.env.example` para `web/.env.local` e preencha.
 3. Rode:
    ```bash
-   streamlit run app.py
+   cd web
+   npm install
+   npm run dev
    ```
 
-## Lendo as sugestões
+## Lendo as sugestões dos usuários
 
-As sugestões enviadas pelo Menu ficam na tabela `feedback`. Para ler, no SQL Editor do Neon:
+As sugestões enviadas pelo Menu ficam na tabela `feedback`:
 
 ```sql
 SELECT email, message, created_at
 FROM feedback
 ORDER BY created_at DESC;
 ```
+
+---
+
+Feito por **[Jean](https://github.com/Je4nms)**, no meu caminho para a área de dados e desenvolvimento.
