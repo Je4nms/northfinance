@@ -77,11 +77,11 @@ async function Statement({ searchParams }: { searchParams: Promise<Params> }) {
         <form className="flex flex-wrap items-end gap-2">
           <input type="hidden" name="periodo" value="datas" />
           {kind && <input type="hidden" name="tipo" value={kind} />}
-          <label className="flex-1">
+          <label className="min-w-0 flex-1">
             <span className="text-sm text-muted">De</span>
             <input type="date" name="de" defaultValue={isoDate(start)} max={isoDate(today)} className="mt-1 w-full rounded-xl bg-card px-3 py-2.5" />
           </label>
-          <label className="flex-1">
+          <label className="min-w-0 flex-1">
             <span className="text-sm text-muted">Até</span>
             <input type="date" name="ate" defaultValue={isoDate(new Date(end.getTime() - 86_400_000))} max={isoDate(today)} className="mt-1 w-full rounded-xl bg-card px-3 py-2.5" />
           </label>
