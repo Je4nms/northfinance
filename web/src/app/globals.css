@@ -54,6 +54,20 @@ body {
   min-height: 100dvh;
 }
 
+/* Campos de data no iPhone: o Safari dá uma largura mínima própria para eles,
+   que fazia o campo passar da borda da tela. Aqui ele passa a respeitar a largura. */
+input[type="date"] {
+  -webkit-appearance: none;
+  appearance: none;
+  display: block;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+}
+input[type="date"]::-webkit-date-and-time-value {
+  text-align: left;
+}
+
 /* Acessibilidade: tamanho do texto (escolhido no painel) */
 html[data-text="grande"] { font-size: 118.75%; }
 html[data-text="extra"] { font-size: 131.25%; }
