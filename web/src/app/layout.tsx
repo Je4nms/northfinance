@@ -1,9 +1,10 @@
 import type { Metadata, Viewport } from "next";
-import { Source_Sans_3 } from "next/font/google";
+import { Inter } from "next/font/google";
 
 import "./globals.css";
 
-const sourceSans = Source_Sans_3({ variable: "--font-source-sans", subsets: ["latin"] });
+// Fonte do app: Inter, feita para telas e com números bem fáceis de ler
+const inter = Inter({ variable: "--font-inter", subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: "NorthFinance",
@@ -26,7 +27,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="pt-BR" className={`${sourceSans.variable} antialiased`} suppressHydrationWarning>
+    <html lang="pt-BR" className={`${inter.variable} antialiased`} suppressHydrationWarning>
       <head>
         {/* Lê as escolhas de acessibilidade salvas no aparelho antes de desenhar a tela */}
         <script
