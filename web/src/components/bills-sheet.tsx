@@ -1,7 +1,8 @@
 "use client";
 // Contas a vencer no Início: uma linha discreta que abre uma janela por baixo com as contas,
 // a confirmação do pagamento (valor grande, que dá para ajustar) e o "✓" no final.
-import { CalendarDays, Check, ChevronRight, Tag, X } from "lucide-react";
+import { CalendarDays, Check, ChevronRight, Plus, Tag, X } from "lucide-react";
+import Link from "next/link";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { createPortal } from "react-dom";
 
@@ -74,6 +75,11 @@ export function BillsSheet({ bills, hide, todayLabel }: { bills: SheetBill[]; hi
               ))}
             </ul>
           )}
+          {step.kind === "list" && (
+            <Link href="/anotar?tipo=conta" onClick={close} className="mt-2 flex items-center justify-center gap-2 rounded-2xl bg-card py-3.5 font-semibold">
+              <Plus size={18} /> Nova conta
+            </Link>
+          )}
           {step.kind === "confirm" && (
             <Confirm
               bill={step.bill}
@@ -87,9 +93,9 @@ export function BillsSheet({ bills, hide, todayLabel }: { bills: SheetBill[]; hi
               <span className="nf-pop-in flex h-18 w-18 items-center justify-center rounded-full bg-primary text-white">
                 <Check size={38} strokeWidth={3} className="nf-check" />
               </span>
-              <p className="mt-4 text-xl font-extrabold">{step.done.name} paga</p>
+              <p className="mt-4 text-xl font-extrabold">Conta paga</p>
               <p className="mt-1 text-muted">
-                {toBRL(step.done.amountCents)} lançado nos gastos.
+                {step.done.name}: {toBRL(step.done.amountCents)} lançado nos gastos.
                 <br />
                 Próximo vencimento: {step.done.nextDue}.
               </p>

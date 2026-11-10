@@ -20,7 +20,7 @@ export async function leave() {
   await signOut({ redirectTo: "/entrar" });
 }
 
-export type FormState = { error?: string; ok?: string };
+export type FormState = { error?: string; ok?: string; detail?: string };
 
 // Maior valor aceito num lançamento ou na meta: R$ 1.000.000,00
 const MAX_CENTS = 100_000_000;
@@ -109,11 +109,11 @@ export async function addBill(_: FormState, form: FormData): Promise<FormState> 
   if (!Number.isInteger(dueDay) || dueDay < 1 || dueDay > 31) return { error: "Escolha o dia do vencimento (1 a 31)." };
   if (!EXPENSE_CATEGORIES.includes(category)) return { error: "Escolha uma categoria." };
 
-  const nextDue = isoDate(firstDueDate(todayInSaoPaulo(), dueDay));
-  const saved = await db.addBill(member.email, { name, amountCents, category, dueDay, nextDue });
+  const firstDue = firstDueDate(todayInSaoPaulo(), dueDay);
+  const saved = await db.addBill(member.email, { name, amountCents, category, dueDay, nextDue: isoDate(firstDue) });
   if (!saved) return { error: "As contas a vencer ainda não foram ativadas no banco." };
   refresh();
-  return { ok: `${name} salva. O app avisa 3 dias antes de vencer.` };
+  return { ok: "Conta salva", detail: `Vence dia ${dayMonth(firstDue)}` };
 }
 
 export async function deleteBill(id: number) {
