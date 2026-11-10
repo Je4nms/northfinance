@@ -171,7 +171,10 @@ export function TransactionForm({ today, editId, initial, startKind, bills = [] 
             <span className="flex h-16 w-16 items-center justify-center rounded-full bg-income text-white">
               <Check size={36} strokeWidth={3} className="nf-check" />
             </span>
-            <p className="font-bold">{state.ok}</p>
+            <div className="text-center">
+              <p className="font-bold">{state.ok}</p>
+              {state.detail && <p className="text-sm text-muted">{state.detail}</p>}
+            </div>
           </div>
         </div>
       )}

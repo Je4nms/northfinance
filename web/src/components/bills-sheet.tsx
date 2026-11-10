@@ -93,9 +93,9 @@ export function BillsSheet({ bills, hide, todayLabel }: { bills: SheetBill[]; hi
               <span className="nf-pop-in flex h-18 w-18 items-center justify-center rounded-full bg-primary text-white">
                 <Check size={38} strokeWidth={3} className="nf-check" />
               </span>
-              <p className="mt-4 text-xl font-extrabold">{step.done.name} paga</p>
+              <p className="mt-4 text-xl font-extrabold">Conta paga</p>
               <p className="mt-1 text-muted">
-                {toBRL(step.done.amountCents)} lançado nos gastos.
+                {step.done.name}: {toBRL(step.done.amountCents)} lançado nos gastos.
                 <br />
                 Próximo vencimento: {step.done.nextDue}.
               </p>
