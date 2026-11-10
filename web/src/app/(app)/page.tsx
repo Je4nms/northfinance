@@ -10,6 +10,7 @@ import { BillsSheet, type SheetBill } from "@/components/bills-sheet";
 import { CategoryIcon } from "@/components/category-icon";
 import { DailyChart } from "@/components/daily-chart";
 import { LoadingLogo } from "@/components/loading-logo";
+import { Tour } from "@/components/tour";
 import { TransactionList } from "@/components/transaction-list";
 import { categoryColor, categoryName } from "@/lib/categories";
 import * as db from "@/lib/db";
@@ -61,6 +62,7 @@ async function Home({ searchParams }: { searchParams: PageProps<"/">["searchPara
 
   return (
     <div className="nf-fade-in space-y-5">
+      <Tour autoStart={params.tour === "1"} />
       {/* Topo: foto, saudação e o olho que esconde os valores */}
       <header className="flex items-center gap-3.5">
         {member.image ? (
@@ -75,7 +77,7 @@ async function Home({ searchParams }: { searchParams: PageProps<"/">["searchPara
           <b className="font-extrabold">{member.firstName}</b>
         </p>
         <form action={toggleValues}>
-          <button aria-label={hide ? "Mostrar valores" : "Esconder valores"} className="flex h-13 w-13 items-center justify-center rounded-full border border-line bg-bg/60 backdrop-blur">
+          <button data-tour="olho" aria-label={hide ? "Mostrar valores" : "Esconder valores"} className="flex h-13 w-13 items-center justify-center rounded-full border border-line bg-bg/60 backdrop-blur">
             {hide ? <EyeOff size={24} /> : <Eye size={24} />}
           </button>
         </form>
@@ -106,7 +108,7 @@ async function Home({ searchParams }: { searchParams: PageProps<"/">["searchPara
             )}
           </nav>
 
-          <section>
+          <section data-tour="saldo">
             <p className="text-sm text-muted">Sobrou no mês</p>
             <p className="text-5xl leading-tight font-extrabold tracking-tight tabular-nums"><AnimatedNumber cents={balance} hidden={hide} /></p>
           </section>
@@ -133,7 +135,7 @@ async function Home({ searchParams }: { searchParams: PageProps<"/">["searchPara
           {totals.expense > 0 && <DailyChart byDay={byDay} month={month} today={today} fmt={fmt} />}
 
           {byCategory.length > 0 && (
-            <section>
+            <section data-tour="categorias">
               <h2 className="mb-2.5 font-bold">Para onde foi o dinheiro</h2>
               <div className="flex h-3.5 gap-0.5 overflow-hidden rounded-full">
                 {byCategory.map((c) => (
