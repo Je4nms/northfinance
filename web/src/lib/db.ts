@@ -309,17 +309,6 @@ export async function listBills(owner: string): Promise<Bill[]> {
   return rows.map(toBill);
 }
 
-/** Contas que vencem até `limit` (incluindo as atrasadas). */
-export async function billsDueBy(owner: string, limit: Date): Promise<Bill[]> {
-  if (!(await billsReady())) return [];
-  const rows = await sql`
-    SELECT ${billColumns()} FROM bills
-    WHERE owner = ${owner} AND next_due <= ${limit}
-    ORDER BY next_due, id
-  `;
-  return rows.map(toBill);
-}
-
 export async function getBill(owner: string, id: number): Promise<Bill | null> {
   if (!(await billsReady())) return null;
   const rows = await sql`SELECT ${billColumns()} FROM bills WHERE id = ${id} AND owner = ${owner}`;

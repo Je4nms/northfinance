@@ -65,7 +65,7 @@ async function Menu({ searchParams }: { searchParams: PageProps<"/menu">["search
 
       <section className={card}>
         <h2 className="flex items-center gap-2 font-bold"><CalendarClock size={18} className="text-primary" /> Contas a vencer</h2>
-        <p className="text-sm text-muted">O app avisa 3 dias antes e no dia. Quando pagar, é só tocar em &ldquo;Paguei&rdquo; no Início.</p>
+        <p className="text-sm text-muted">O app avisa 3 dias antes e no dia. Quando pagar, toque no aviso do Início e confirme.</p>
         {bills.length > 0 && (
           <ul className="divide-y divide-line">
             {bills.map((b) => (

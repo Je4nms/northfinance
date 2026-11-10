@@ -1,19 +1,19 @@
 // Início: saudação, saldo do mês, meta, para onde foi o dinheiro e últimos lançamentos
-import { BellRing, ChevronLeft, ChevronRight, Eye, EyeOff, Target, TrendingDown, TrendingUp } from "lucide-react";
+import { ChevronLeft, ChevronRight, Eye, EyeOff, Target, TrendingDown, TrendingUp } from "lucide-react";
 import { cookies } from "next/headers";
 import Link from "next/link";
 import { Suspense } from "react";
 
 import { answerEnjoying, saveGoal, toggleValues } from "@/app/actions";
 import { AnimatedNumber } from "@/components/animated-number";
-import { PayButton } from "@/components/bills";
+import { BillsSheet, type SheetBill } from "@/components/bills-sheet";
 import { CategoryIcon } from "@/components/category-icon";
 import { DailyChart } from "@/components/daily-chart";
 import { LoadingLogo } from "@/components/loading-logo";
 import { TransactionList } from "@/components/transaction-list";
 import { categoryColor, categoryName } from "@/lib/categories";
 import * as db from "@/lib/db";
-import { dueLabel, greeting, monthName, monthParam, monthRange, parseMonth, shiftMonth, todayInSaoPaulo, toBRL } from "@/lib/money";
+import { dueLabel, greeting, isoDate, monthName, monthParam, monthRange, parseMonth, shiftMonth, todayInSaoPaulo, toBRL } from "@/lib/money";
 import { currentMember } from "@/lib/session";
 
 export default function Page({ searchParams }: PageProps<"/">) {
@@ -46,10 +46,8 @@ async function Home({ searchParams }: { searchParams: PageProps<"/">["searchPara
     Date.UTC(previous.getUTCFullYear(), previous.getUTCMonth() + 1, 1),
   ));
 
-  // Contas que vencem nos próximos 3 dias (ou já venceram). Só aparecem no mês atual.
-  const warnUntil = new Date(today.getTime() + 3 * 86_400_000);
 
-  const [totals, byCategory, recent, goal, askEnjoying, byDay, previousSpent, dueBills] = await Promise.all([
+  const [totals, byCategory, recent, goal, askEnjoying, byDay, previousSpent, bills] = await Promise.all([
     db.monthTotals(member.email, start, end),
     db.expensesByCategory(member.email, start, end),
     db.listTransactions(member.email, start, end),
@@ -57,7 +55,7 @@ async function Home({ searchParams }: { searchParams: PageProps<"/">["searchPara
     db.shouldAskEnjoying(member.email),
     db.expensesByDay(member.email, start, end),
     db.expensesBetween(member.email, previous, previousEnd),
-    isCurrentMonth ? db.billsDueBy(member.email, warnUntil) : Promise.resolve([]),
+    isCurrentMonth ? db.listBills(member.email) : Promise.resolve([]),
   ]);
   const balance = totals.income - totals.expense;
 
@@ -113,7 +111,7 @@ async function Home({ searchParams }: { searchParams: PageProps<"/">["searchPara
             <p className="text-5xl leading-tight font-extrabold tracking-tight tabular-nums"><AnimatedNumber cents={balance} hidden={hide} /></p>
           </section>
 
-          {dueBills.length > 0 && <DueBills bills={dueBills.slice(0, 2)} today={today} fmt={fmt} />}
+          {bills.length > 0 && <BillsSheet bills={bills.map((b) => toSheetBill(b, today))} hide={hide} todayLabel={isoDate(today).slice(8, 10) + "/" + isoDate(today).slice(5, 7)} />}
 
           <div className="grid grid-cols-2 gap-2.5">
             <div className="rounded-3xl bg-card p-4">
@@ -285,28 +283,12 @@ function Comparison({ spent, previous, previousMonth, hide, partial }: {
 }
 
 /**
- * Contas a vencer: só aparece quando alguma conta vence em até 3 dias (no máximo 2 contas).
- * Vermelho quando já venceu, laranja quando vence hoje.
+ * Contas a vencer: a linha do Início só aparece quando alguma conta vence em até 3 dias.
+ * Vermelho quando já venceu, laranja quando vence hoje ou nos próximos dias.
  */
-function DueBills({ bills, today, fmt }: { bills: db.Bill[]; today: Date; fmt: (cents: number) => string }) {
-  return (
-    <section aria-label="Contas a vencer" className="space-y-2">
-      {bills.map((b) => {
-        const late = b.nextDue < today;
-        const isToday = b.nextDue.getTime() === today.getTime();
-        const tone = late ? "border-expense/40 bg-expense/10" : isToday ? "border-warning/40 bg-warning/10" : "border-line bg-card";
-        const text = late ? "text-expense" : isToday ? "text-warning" : "text-muted";
-        return (
-          <div key={b.id} className={`flex flex-wrap items-center gap-3 rounded-3xl border p-4 ${tone}`}>
-            <span className={`flex h-10 w-10 flex-none items-center justify-center rounded-full bg-bg/60 ${text}`}><BellRing size={20} /></span>
-            <div className="min-w-0 flex-1">
-              <p className="truncate font-bold">{b.name} <span className="font-semibold">{fmt(b.amountCents)}</span></p>
-              <p className={`text-sm font-semibold ${text}`}>{dueLabel(b.nextDue, today).replace(/^./, (c) => c.toUpperCase())}</p>
-            </div>
-            <PayButton id={b.id} name={b.name} amountCents={b.amountCents} />
-          </div>
-        );
-      })}
-    </section>
-  );
+function toSheetBill(b: db.Bill, today: Date): SheetBill {
+  const days = Math.round((b.nextDue.getTime() - today.getTime()) / 86_400_000);
+  const tone = days < 0 ? "late" : days === 0 ? "today" : days <= 3 ? "soon" : "later";
+  const label = tone === "later" ? `Dia ${b.nextDue.getUTCDate()}` : dueLabel(b.nextDue, today).replace(/^./, (c) => c.toUpperCase());
+  return { id: b.id, name: b.name, amountCents: b.amountCents, category: b.category, label, tone };
 }

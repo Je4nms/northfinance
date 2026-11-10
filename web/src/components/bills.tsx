@@ -1,44 +1,9 @@
 "use client";
-// Contas a vencer: o botão "Paguei" (com confirmação do valor) e o formulário de cadastro no Menu
-import { useActionState, useState } from "react";
+// Contas a vencer: o formulário de cadastro no Menu
+import { useActionState } from "react";
 
-import { addBill, payBill, type FormState } from "@/app/actions";
+import { addBill, type FormState } from "@/app/actions";
 import { categoryName, EXPENSE_CATEGORIES } from "@/lib/categories";
-
-const asInput = (cents: number) => (cents / 100).toFixed(2).replace(".", ",");
-
-/** "Paguei": abre a confirmação com o valor já preenchido, que dá para ajustar (luz e água mudam todo mês). */
-export function PayButton({ id, name, amountCents }: { id: number; name: string; amountCents: number }) {
-  const [open, setOpen] = useState(false);
-  const [state, action, pending] = useActionState<FormState, FormData>(payBill.bind(null, id), {});
-
-  if (!open) {
-    return (
-      <button type="button" onClick={() => setOpen(true)} className="rounded-full bg-primary px-4 py-2 text-sm font-semibold text-white">
-        Paguei
-      </button>
-    );
-  }
-
-  return (
-    <form action={action} className="mt-3 w-full space-y-2 rounded-2xl bg-bg/70 p-3">
-      <label className="block">
-        <span className="text-sm font-semibold">Pagou {name}? Confira o valor:</span>
-        <span className="mt-1 flex items-center gap-2 rounded-xl border border-line bg-bg px-3 py-2">
-          <span className="text-muted">R$</span>
-          <input name="amount" inputMode="decimal" defaultValue={asInput(amountCents)} autoFocus className="min-w-0 flex-1 bg-transparent font-bold outline-none" />
-        </span>
-      </label>
-      {state.error && <p className="text-sm font-semibold text-expense">{state.error}</p>}
-      <div className="flex gap-2">
-        <button type="button" onClick={() => setOpen(false)} className="flex-1 rounded-xl border border-line py-2.5 font-semibold">Cancelar</button>
-        <button disabled={pending} className="flex-1 rounded-xl bg-primary py-2.5 font-semibold text-white disabled:opacity-60">
-          {pending ? "Salvando..." : "Confirmar"}
-        </button>
-      </div>
-    </form>
-  );
-}
 
 /** Cadastro de uma conta no Menu. Fica fechado até tocar em "Adicionar conta". */
 export function BillForm() {

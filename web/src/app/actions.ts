@@ -9,7 +9,7 @@ import { redirect } from "next/navigation";
 import { signIn, signOut } from "@/auth";
 import { EXPENSE_CATEGORIES, INCOME_CATEGORIES } from "@/lib/categories";
 import * as db from "@/lib/db";
-import { dueDateIn, firstDueDate, isoDate, parseBRL, shiftMonth, todayInSaoPaulo } from "@/lib/money";
+import { dayMonth, dueDateIn, firstDueDate, isoDate, parseBRL, shiftMonth, todayInSaoPaulo } from "@/lib/money";
 import { currentMember, currentUser } from "@/lib/session";
 
 export async function enter() {
@@ -123,8 +123,10 @@ export async function deleteBill(id: number) {
   refresh();
 }
 
+export type PayState = { error?: string; done?: { name: string; amountCents: number; nextDue: string } };
+
 /** "Paguei": lança o gasto com o valor confirmado e joga o vencimento para o mês seguinte. */
-export async function payBill(id: number, _: FormState, form: FormData): Promise<FormState> {
+export async function payBill(id: number, _: PayState, form: FormData): Promise<PayState> {
   const member = await currentMember();
   if (!Number.isSafeInteger(id)) return { error: "Conta não encontrada." };
   const amountCents = parseBRL(String(form.get("amount") ?? ""));
@@ -134,14 +136,15 @@ export async function payBill(id: number, _: FormState, form: FormData): Promise
   const bill = await db.getBill(member.email, id);
   if (!bill) return { error: "Conta não encontrada." };
   const nextDue = dueDateIn(shiftMonth(bill.nextDue, 1), bill.dueDay);
-  await db.payBill(member.email, id, {
+  const paid = await db.payBill(member.email, id, {
     amountCents,
     paidOn: isoDate(todayInSaoPaulo()),
     expectedDue: isoDate(bill.nextDue),
     nextDue: isoDate(nextDue),
   });
+  if (!paid) return { error: "Essa conta já foi paga." };
   refresh();
-  return { ok: "Pago" };
+  return { done: { name: bill.name, amountCents, nextDue: dayMonth(nextDue) } };
 }
 
 export async function deleteTransaction(id: number) {

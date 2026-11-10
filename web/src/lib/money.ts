@@ -94,3 +94,8 @@ export function dueLabel(due: Date, today: Date): string {
   if (days === -1) return "venceu ontem";
   return `venceu há ${-days} dias`;
 }
+
+/** "11 de dezembro" */
+export function dayMonth(day: Date): string {
+  return `${day.getUTCDate()} de ${MONTHS[day.getUTCMonth()]}`;
+}
