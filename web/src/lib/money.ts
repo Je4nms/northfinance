@@ -72,3 +72,25 @@ export function greeting(now = new Date()): string {
   if (hour >= 12 && hour < 18) return "Boa tarde";
   return "Boa noite";
 }
+
+/** Dia de vencimento dentro de um mês. Dia 31 em fevereiro vira o último dia (28 ou 29). */
+export function dueDateIn(month: Date, dueDay: number): Date {
+  const lastDay = new Date(Date.UTC(month.getUTCFullYear(), month.getUTCMonth() + 1, 0)).getUTCDate();
+  return new Date(Date.UTC(month.getUTCFullYear(), month.getUTCMonth(), Math.min(dueDay, lastDay)));
+}
+
+/** Próximo vencimento a partir de hoje: este mês, se ainda não passou; senão, o mês que vem. */
+export function firstDueDate(today: Date, dueDay: number): Date {
+  const thisMonth = dueDateIn(today, dueDay);
+  return thisMonth >= today ? thisMonth : dueDateIn(shiftMonth(today, 1), dueDay);
+}
+
+/** "vence hoje", "vence amanhã", "vence em 3 dias", "venceu ontem", "venceu há 4 dias". */
+export function dueLabel(due: Date, today: Date): string {
+  const days = Math.round((due.getTime() - today.getTime()) / 86_400_000);
+  if (days === 0) return "vence hoje";
+  if (days === 1) return "vence amanhã";
+  if (days > 1) return `vence em ${days} dias`;
+  if (days === -1) return "venceu ontem";
+  return `venceu há ${-days} dias`;
+}

@@ -270,3 +270,100 @@ export async function runRecurring(owner: string, today: Date): Promise<void> {
     }
   });
 }
+
+// --- Contas a vencer (avisam antes do vencimento; você confirma quando pagar) ---
+// A tabela bills é criada pelo SQL em web/sql/contas-a-vencer.sql.
+
+export type Bill = {
+  id: number;
+  name: string;
+  amountCents: number;
+  category: string;
+  dueDay: number;
+  nextDue: Date;
+};
+
+async function billsReady(): Promise<boolean> {
+  const [{ ok }] = await sql`SELECT to_regclass('bills') IS NOT NULL AS ok`;
+  return ok;
+}
+
+function toBill(r: postgres.Row): Bill {
+  return {
+    id: r.id,
+    name: r.name,
+    amountCents: r.amount_cents,
+    category: r.category,
+    dueDay: r.due_day,
+    nextDue: new Date(r.next_due + "T00:00:00Z"),
+  };
+}
+
+// Função (e não constante) para criar um pedaço novo de SQL a cada consulta
+const billColumns = () => sql`id, name, amount_cents, category, due_day, next_due::text AS next_due`;
+
+/** Todas as contas, da que vence primeiro para a última. */
+export async function listBills(owner: string): Promise<Bill[]> {
+  if (!(await billsReady())) return [];
+  const rows = await sql`SELECT ${billColumns()} FROM bills WHERE owner = ${owner} ORDER BY next_due, id`;
+  return rows.map(toBill);
+}
+
+/** Contas que vencem até `limit` (incluindo as atrasadas). */
+export async function billsDueBy(owner: string, limit: Date): Promise<Bill[]> {
+  if (!(await billsReady())) return [];
+  const rows = await sql`
+    SELECT ${billColumns()} FROM bills
+    WHERE owner = ${owner} AND next_due <= ${limit}
+    ORDER BY next_due, id
+  `;
+  return rows.map(toBill);
+}
+
+export async function getBill(owner: string, id: number): Promise<Bill | null> {
+  if (!(await billsReady())) return null;
+  const rows = await sql`SELECT ${billColumns()} FROM bills WHERE id = ${id} AND owner = ${owner}`;
+  return rows[0] ? toBill(rows[0]) : null;
+}
+
+export async function addBill(
+  owner: string,
+  b: { name: string; amountCents: number; category: string; dueDay: number; nextDue: string },
+): Promise<boolean> {
+  if (!(await billsReady())) return false;
+  await sql`
+    INSERT INTO bills (owner, name, amount_cents, category, due_day, next_due)
+    VALUES (${owner}, ${b.name}, ${b.amountCents}, ${b.category}, ${b.dueDay}, ${b.nextDue})
+  `;
+  return true;
+}
+
+export async function deleteBill(owner: string, id: number): Promise<void> {
+  if (!(await billsReady())) return;
+  await sql`DELETE FROM bills WHERE id = ${id} AND owner = ${owner}`;
+}
+
+/**
+ * "Paguei": lança o gasto e passa o vencimento para o mês seguinte, as duas coisas juntas.
+ * O `expectedDue` evita lançar duas vezes se a pessoa tocar duas vezes em Confirmar.
+ */
+export async function payBill(
+  owner: string,
+  id: number,
+  p: { amountCents: number; paidOn: string; expectedDue: string; nextDue: string },
+): Promise<boolean> {
+  return sql.begin(async (tx) => {
+    const [bill] = await tx`
+      SELECT name, category FROM bills
+      WHERE id = ${id} AND owner = ${owner} AND next_due = ${p.expectedDue}
+      FOR UPDATE
+    `;
+    if (!bill) return false;
+    await tx`
+      INSERT INTO transactions (owner, kind, amount_cents, category, description, occurred_on)
+      VALUES (${owner}, 'expense', ${p.amountCents}, ${bill.category}, ${bill.name}, ${p.paidOn})
+    `;
+    await tx`UPDATE bills SET next_due = ${p.nextDue} WHERE id = ${id}`;
+    return true;
+  });
+}
