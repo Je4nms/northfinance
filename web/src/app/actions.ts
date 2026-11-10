@@ -113,7 +113,7 @@ export async function addBill(_: FormState, form: FormData): Promise<FormState> 
   const saved = await db.addBill(member.email, { name, amountCents, category, dueDay, nextDue });
   if (!saved) return { error: "As contas a vencer ainda não foram ativadas no banco." };
   refresh();
-  return { ok: `${name} salva. O app avisa 3 dias antes de vencer.` };
+  return { ok: `${name} salva` };
 }
 
 export async function deleteBill(id: number) {
