@@ -200,3 +200,32 @@ html[data-contrast="alto"] {
     animation-duration: 3s;
   }
 }
+
+/* Janela que sobe por baixo (contas a vencer) */
+.nf-backdrop {
+  animation: nf-fade 0.2s ease-out both;
+}
+.nf-sheet {
+  animation: nf-sheet-up 0.32s cubic-bezier(0.2, 0.9, 0.3, 1) both;
+}
+.nf-pop-in {
+  animation: nf-pop-in 0.45s cubic-bezier(0.2, 0.9, 0.3, 1.3) both;
+}
+
+@keyframes nf-fade {
+  from { opacity: 0; }
+}
+@keyframes nf-sheet-up {
+  from { transform: translateY(100%); }
+}
+@keyframes nf-pop-in {
+  from { opacity: 0; transform: scale(0.5); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nf-backdrop,
+  .nf-sheet,
+  .nf-pop-in {
+    animation: none;
+  }
+}

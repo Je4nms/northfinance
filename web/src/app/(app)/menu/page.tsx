@@ -1,13 +1,14 @@
 // Menu no estilo "perfil": foto, nome e as opções em blocos
-import { ChevronRight, Info, LogOut, MessageSquare, Repeat, Trash2, UserPlus } from "lucide-react";
+import { CalendarClock, ChevronRight, Info, LogOut, MessageSquare, Repeat, Trash2, UserPlus } from "lucide-react";
 import Link from "next/link";
 import { Suspense } from "react";
 
-import { deleteRecurring, leave } from "@/app/actions";
+import { deleteBill, deleteRecurring, leave } from "@/app/actions";
+import { BillForm } from "@/components/bills";
 import { CategoryIcon } from "@/components/category-icon";
 import { categoryName } from "@/lib/categories";
 import * as db from "@/lib/db";
-import { toBRL } from "@/lib/money";
+import { dueLabel, todayInSaoPaulo, toBRL } from "@/lib/money";
 import { LoadingLogo } from "@/components/loading-logo";
 import { CopyButton, FeedbackForm } from "@/components/menu-client";
 import { currentMember } from "@/lib/session";
@@ -29,7 +30,8 @@ async function Menu({ searchParams }: { searchParams: PageProps<"/menu">["search
     "Oi! Estou usando o NorthFinance para organizar minhas finanças. " +
     `Entra com a sua conta Google: ${APP_URL} Código de convite: ${process.env.INVITE_CODE ?? ""}`;
   const card = "space-y-3 rounded-3xl bg-card p-4";
-  const recurring = await db.listRecurring(member.email);
+  const [recurring, bills] = await Promise.all([db.listRecurring(member.email), db.listBills(member.email)]);
+  const today = todayInSaoPaulo();
 
   return (
     <div className="nf-fade-in mx-auto max-w-[520px] space-y-4">
@@ -59,6 +61,30 @@ async function Menu({ searchParams }: { searchParams: PageProps<"/menu">["search
             WhatsApp
           </a>
         </div>
+      </section>
+
+      <section className={card}>
+        <h2 className="flex items-center gap-2 font-bold"><CalendarClock size={18} className="text-primary" /> Contas a vencer</h2>
+        <p className="text-sm text-muted">O app avisa 3 dias antes e no dia. Quando pagar, toque no aviso do Início e confirme.</p>
+        {bills.length > 0 && (
+          <ul className="divide-y divide-line">
+            {bills.map((b) => (
+              <li key={b.id} className="flex items-center gap-3 py-2">
+                <CategoryIcon category={b.category} size={36} />
+                <div className="min-w-0 flex-1">
+                  <p className="truncate font-semibold">{b.name}</p>
+                  <p className="text-sm text-muted">Todo dia {b.dueDay} · {toBRL(b.amountCents)} · {dueLabel(b.nextDue, today)}</p>
+                </div>
+                <form action={deleteBill.bind(null, b.id)}>
+                  <button aria-label={`Apagar a conta ${b.name}`} className="flex h-10 w-10 items-center justify-center rounded-full text-muted hover:text-expense">
+                    <Trash2 size={18} />
+                  </button>
+                </form>
+              </li>
+            ))}
+          </ul>
+        )}
+        <BillForm />
       </section>
 
       <section className={card}>

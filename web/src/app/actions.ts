@@ -9,7 +9,7 @@ import { redirect } from "next/navigation";
 import { signIn, signOut } from "@/auth";
 import { EXPENSE_CATEGORIES, INCOME_CATEGORIES } from "@/lib/categories";
 import * as db from "@/lib/db";
-import { parseBRL, todayInSaoPaulo } from "@/lib/money";
+import { dayMonth, dueDateIn, firstDueDate, isoDate, parseBRL, shiftMonth, todayInSaoPaulo } from "@/lib/money";
 import { currentMember, currentUser } from "@/lib/session";
 
 export async function enter() {
@@ -92,6 +92,59 @@ export async function deleteRecurring(id: number) {
   if (!Number.isSafeInteger(id)) return;
   await db.deleteRecurring(member.email, id);
   refresh();
+}
+
+// --- Contas a vencer ---
+
+export async function addBill(_: FormState, form: FormData): Promise<FormState> {
+  const member = await currentMember();
+  const name = String(form.get("name") ?? "").trim().slice(0, 60);
+  const amountCents = parseBRL(String(form.get("amount") ?? ""));
+  const dueDay = Number(form.get("dueDay"));
+  const category = String(form.get("category") ?? "");
+
+  if (!name) return { error: "Dê um nome para a conta (ex.: Luz)." };
+  if (!amountCents || amountCents <= 0) return { error: "Coloque o valor." };
+  if (amountCents > MAX_CENTS) return { error: "Valor alto demais. O máximo é R$ 1.000.000,00." };
+  if (!Number.isInteger(dueDay) || dueDay < 1 || dueDay > 31) return { error: "Escolha o dia do vencimento (1 a 31)." };
+  if (!EXPENSE_CATEGORIES.includes(category)) return { error: "Escolha uma categoria." };
+
+  const nextDue = isoDate(firstDueDate(todayInSaoPaulo(), dueDay));
+  const saved = await db.addBill(member.email, { name, amountCents, category, dueDay, nextDue });
+  if (!saved) return { error: "As contas a vencer ainda não foram ativadas no banco." };
+  refresh();
+  return { ok: `${name} salva. O app avisa 3 dias antes de vencer.` };
+}
+
+export async function deleteBill(id: number) {
+  const member = await currentMember();
+  if (!Number.isSafeInteger(id)) return;
+  await db.deleteBill(member.email, id);
+  refresh();
+}
+
+export type PayState = { error?: string; done?: { name: string; amountCents: number; nextDue: string } };
+
+/** "Paguei": lança o gasto com o valor confirmado e joga o vencimento para o mês seguinte. */
+export async function payBill(id: number, _: PayState, form: FormData): Promise<PayState> {
+  const member = await currentMember();
+  if (!Number.isSafeInteger(id)) return { error: "Conta não encontrada." };
+  const amountCents = parseBRL(String(form.get("amount") ?? ""));
+  if (!amountCents || amountCents <= 0) return { error: "Coloque o valor pago." };
+  if (amountCents > MAX_CENTS) return { error: "Valor alto demais. O máximo é R$ 1.000.000,00." };
+
+  const bill = await db.getBill(member.email, id);
+  if (!bill) return { error: "Conta não encontrada." };
+  const nextDue = dueDateIn(shiftMonth(bill.nextDue, 1), bill.dueDay);
+  const paid = await db.payBill(member.email, id, {
+    amountCents,
+    paidOn: isoDate(todayInSaoPaulo()),
+    expectedDue: isoDate(bill.nextDue),
+    nextDue: isoDate(nextDue),
+  });
+  if (!paid) return { error: "Essa conta já foi paga." };
+  refresh();
+  return { done: { name: bill.name, amountCents, nextDue: dayMonth(nextDue) } };
 }
 
 export async function deleteTransaction(id: number) {

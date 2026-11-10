@@ -6,13 +6,14 @@ import { Suspense } from "react";
 
 import { answerEnjoying, saveGoal, toggleValues } from "@/app/actions";
 import { AnimatedNumber } from "@/components/animated-number";
+import { BillsSheet, type SheetBill } from "@/components/bills-sheet";
 import { CategoryIcon } from "@/components/category-icon";
 import { DailyChart } from "@/components/daily-chart";
 import { LoadingLogo } from "@/components/loading-logo";
 import { TransactionList } from "@/components/transaction-list";
 import { categoryColor, categoryName } from "@/lib/categories";
 import * as db from "@/lib/db";
-import { greeting, monthName, monthParam, monthRange, parseMonth, shiftMonth, todayInSaoPaulo, toBRL } from "@/lib/money";
+import { dueLabel, greeting, isoDate, monthName, monthParam, monthRange, parseMonth, shiftMonth, todayInSaoPaulo, toBRL } from "@/lib/money";
 import { currentMember } from "@/lib/session";
 
 export default function Page({ searchParams }: PageProps<"/">) {
@@ -45,7 +46,8 @@ async function Home({ searchParams }: { searchParams: PageProps<"/">["searchPara
     Date.UTC(previous.getUTCFullYear(), previous.getUTCMonth() + 1, 1),
   ));
 
-  const [totals, byCategory, recent, goal, askEnjoying, byDay, previousSpent] = await Promise.all([
+
+  const [totals, byCategory, recent, goal, askEnjoying, byDay, previousSpent, bills] = await Promise.all([
     db.monthTotals(member.email, start, end),
     db.expensesByCategory(member.email, start, end),
     db.listTransactions(member.email, start, end),
@@ -53,6 +55,7 @@ async function Home({ searchParams }: { searchParams: PageProps<"/">["searchPara
     db.shouldAskEnjoying(member.email),
     db.expensesByDay(member.email, start, end),
     db.expensesBetween(member.email, previous, previousEnd),
+    isCurrentMonth ? db.listBills(member.email) : Promise.resolve([]),
   ]);
   const balance = totals.income - totals.expense;
 
@@ -107,6 +110,8 @@ async function Home({ searchParams }: { searchParams: PageProps<"/">["searchPara
             <p className="text-sm text-muted">Sobrou no mês</p>
             <p className="text-5xl leading-tight font-extrabold tracking-tight tabular-nums"><AnimatedNumber cents={balance} hidden={hide} /></p>
           </section>
+
+          {bills.length > 0 && <BillsSheet bills={bills.map((b) => toSheetBill(b, today))} hide={hide} todayLabel={isoDate(today).slice(8, 10) + "/" + isoDate(today).slice(5, 7)} />}
 
           <div className="grid grid-cols-2 gap-2.5">
             <div className="rounded-3xl bg-card p-4">
@@ -275,4 +280,15 @@ function Comparison({ spent, previous, previousMonth, hide, partial }: {
       </p>
     </div>
   );
+}
+
+/**
+ * Contas a vencer: a linha do Início só aparece quando alguma conta vence em até 3 dias.
+ * Vermelho quando já venceu, laranja quando vence hoje ou nos próximos dias.
+ */
+function toSheetBill(b: db.Bill, today: Date): SheetBill {
+  const days = Math.round((b.nextDue.getTime() - today.getTime()) / 86_400_000);
+  const tone = days < 0 ? "late" : days === 0 ? "today" : days <= 3 ? "soon" : "later";
+  const label = tone === "later" ? `Dia ${b.nextDue.getUTCDate()}` : dueLabel(b.nextDue, today).replace(/^./, (c) => c.toUpperCase());
+  return { id: b.id, name: b.name, amountCents: b.amountCents, category: b.category, label, tone };
 }
