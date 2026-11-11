@@ -39,7 +39,7 @@
   --color-expense: var(--expense);
   --color-warning: var(--warning);
   --color-primary: var(--primary);
-  --font-sans: var(--font-source-sans), system-ui, sans-serif;
+  --font-sans: var(--font-inter), system-ui, sans-serif;
 }
 
 /* Texto base um pouco maior (17px). Tudo no app usa "rem", então cresce junto. */
