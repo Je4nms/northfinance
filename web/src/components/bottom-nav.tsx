@@ -21,6 +21,7 @@ export function BottomNav() {
             <li key={tab.href} className="flex-1">
               <Link
                 href={tab.href}
+                data-tour={tab.href === "/" ? "inicio" : tab.href.slice(1)}
                 className={`flex flex-col items-center gap-0.5 rounded-xl py-1.5 text-[0.8rem] font-semibold transition-colors ${
                   active ? "text-primary" : "text-muted"
                 }`}

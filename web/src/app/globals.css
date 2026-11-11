@@ -229,3 +229,13 @@ html[data-contrast="alto"] {
     animation: none;
   }
 }
+
+/* Tour: o destaque desliza de uma parte da tela para a outra */
+.nf-spotlight {
+  transition: top 0.3s ease, left 0.3s ease, width 0.3s ease, height 0.3s ease;
+}
+@media (prefers-reduced-motion: reduce) {
+  .nf-spotlight {
+    transition: none;
+  }
+}

@@ -1,5 +1,5 @@
 // Menu no estilo "perfil": foto, nome e as opções em blocos
-import { ChevronRight, Info, LogOut, MessageSquare, Repeat, Trash2, UserPlus } from "lucide-react";
+import { ChevronRight, Compass, Info, LogOut, MessageSquare, Repeat, Trash2, UserPlus } from "lucide-react";
 import Link from "next/link";
 import { Suspense } from "react";
 
@@ -93,6 +93,7 @@ async function Menu({ searchParams }: { searchParams: PageProps<"/menu">["search
       <section className={card}>
         <h2 className="flex items-center gap-2 font-bold"><Info size={18} className="text-primary" /> Sobre o NorthFinance</h2>
         <p className="text-sm text-muted">O app de finanças mais simples que existe: anote o que entra e o que sai, e veja para onde o dinheiro está indo.</p>
+        <Link href="/?tour=1" className="flex items-center justify-between text-sm font-semibold text-primary"><span className="flex items-center gap-2"><Compass size={16} /> Ver o tour do app</span> <ChevronRight size={16} /></Link>
         <Link href="/privacidade" className="flex items-center justify-between text-sm font-semibold text-primary">Política de Privacidade <ChevronRight size={16} /></Link>
       </section>
 
