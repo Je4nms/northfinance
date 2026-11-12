@@ -11,11 +11,13 @@ import { SavingsSheet } from "@/components/savings-sheet";
 import { CategoryIcon } from "@/components/category-icon";
 import { DailyChart } from "@/components/daily-chart";
 import { LoadingLogo } from "@/components/loading-logo";
+import { PushOffer } from "@/components/notifications";
 import { Tour } from "@/components/tour";
 import { TransactionList } from "@/components/transaction-list";
 import { categoryColor, categoryName } from "@/lib/categories";
 import * as db from "@/lib/db";
 import { dueLabel, greeting, isoDate, monthName, monthParam, monthRange, parseMonth, shiftMonth, todayInSaoPaulo, toBRL } from "@/lib/money";
+import { pushConfigured } from "@/lib/push";
 import { savingsFor } from "@/lib/savings";
 import { currentMember } from "@/lib/session";
 
@@ -71,6 +73,7 @@ async function Home({ searchParams }: { searchParams: PageProps<"/">["searchPara
   return (
     <div className="nf-fade-in space-y-5">
       <Tour autoStart={params.tour === "1"} />
+      {pushConfigured() && (await db.notificationsReady()) && <PushOffer publicKey={process.env.VAPID_PUBLIC_KEY!} />}
       {/* Topo: foto, saudação e o olho que esconde os valores */}
       <header className="flex items-center gap-3.5">
         {member.image ? (

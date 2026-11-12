@@ -17,11 +17,16 @@ export type Savings = {
   ruleText: string | null; // "no último dia útil"
 };
 
-export async function savingsFor(email: string, today: Date): Promise<Savings> {
+/** A regra do salário: a escolhida pela pessoa ou a descoberta pelos salários anotados. */
+export async function paydayRuleFor(email: string, today: Date): Promise<{ rule: PaydayRule | null; source: "saved" | "detected" | "none" }> {
   const saved = await db.getPaydayRule(email);
   const savedRule = saved && KINDS.includes(saved.kind as PaydayKind) ? (saved as PaydayRule) : null;
   const rule = savedRule ?? detectRule(await db.salaryDays(email, shiftMonth(today, -4)));
-  const ruleSource = savedRule ? "saved" : rule ? "detected" : "none";
+  return { rule, source: savedRule ? "saved" : rule ? "detected" : "none" };
+}
+
+export async function savingsFor(email: string, today: Date): Promise<Savings> {
+  const { rule, source: ruleSource } = await paydayRuleFor(email, today);
   const tomorrow = new Date(today.getTime() + DAY);
 
   let visible: boolean;

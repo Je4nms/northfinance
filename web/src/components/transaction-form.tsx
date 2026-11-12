@@ -5,6 +5,7 @@ import { useActionState, useEffect, useRef, useState } from "react";
 
 import { addBill, addTransaction, deleteBill, deleteRecurring, updateTransaction, type FormState } from "@/app/actions";
 import { CategoryGlyph, CategoryIcon } from "@/components/category-icon";
+import { PushHint } from "@/components/notifications";
 import { categoryName, EXPENSE_CATEGORIES, INCOME_CATEGORIES } from "@/lib/categories";
 import { haptic } from "@/lib/haptic";
 import { toBRL } from "@/lib/money";
@@ -24,8 +25,9 @@ const KINDS: { value: Kind; label: string }[] = [
  * Formulário do Anotar (Gasto, Ganho ou Conta a vencer) e do Editar (só Gasto ou Ganho).
  * "Conta" guarda uma conta que vence todo mês: o app avisa antes, e você confirma quando pagar.
  */
-export function TransactionForm({ today, editId, initial, startKind, bills = [], recurring = [], favorites }: {
+export function TransactionForm({ today, editId, initial, startKind, bills = [], recurring = [], favorites, pushKey }: {
   today: string; editId?: number; initial?: Initial; startKind?: Kind; bills?: BillItem[]; recurring?: RecurringItem[];
+  pushKey?: string; // chave pública das notificações: mostra o convite "Ativar avisos" perto das contas
   favorites?: string[]; // as 5 categorias de gasto que aparecem primeiro
 }) {
   const [allCategories, setAllCategories] = useState(false);
@@ -207,6 +209,7 @@ export function TransactionForm({ today, editId, initial, startKind, bills = [],
           remove: deleteBill.bind(null, b.id), removeLabel: `Apagar a conta ${b.name}`,
         }))} />
       )}
+      {isBill && bills.length > 0 && pushKey && <PushHint publicKey={pushKey} />}
 
       {!editId && !isBill && fixed.length > 0 && (
         <SavedList title={kind === "income" ? "Seus ganhos fixos" : "Seus gastos fixos"} items={fixed.map((r) => ({

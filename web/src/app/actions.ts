@@ -245,6 +245,24 @@ export async function acceptAiConsent() {
   await db.giveAiConsent(member.email);
 }
 
+// --- Notificações ---
+
+/** Guarda o aparelho que aceitou receber avisos (vem do navegador: endpoint e chaves). */
+export async function savePushSubscription(sub: { endpoint?: unknown; keys?: { p256dh?: unknown; auth?: unknown } }): Promise<boolean> {
+  const member = await currentMember();
+  const endpoint = typeof sub?.endpoint === "string" ? sub.endpoint : "";
+  const p256dh = typeof sub?.keys?.p256dh === "string" ? sub.keys.p256dh : "";
+  const auth = typeof sub?.keys?.auth === "string" ? sub.keys.auth : "";
+  if (!endpoint.startsWith("https://") || endpoint.length > 1000 || !p256dh || p256dh.length > 200 || !auth || auth.length > 100) return false;
+  await db.savePushSubscription(member.email, { endpoint, p256dh, auth });
+  return true;
+}
+
+export async function removePushSubscription(endpoint: string) {
+  const member = await currentMember();
+  if (typeof endpoint === "string") await db.deletePushSubscription(member.email, endpoint);
+}
+
 export async function deleteTransaction(id: number) {
   const member = await currentMember();
   if (!Number.isSafeInteger(id)) return;

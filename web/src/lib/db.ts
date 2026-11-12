@@ -579,3 +579,58 @@ export async function searchTransactions(
   ]);
   return { rows: rows.map(toTransaction), total: summary[0].n, sumCents: Number(summary[0].s) };
 }
+
+// --- Notificações ---
+// As tabelas push_subscriptions e notification_settings são criadas por web/sql/notificacoes.sql.
+// Todos os avisos ficam ligados e sem valores; de notification_settings só usamos o dia do último aviso.
+
+export async function notificationsReady(): Promise<boolean> {
+  const [{ ok }] = await sql`SELECT to_regclass('notification_settings') IS NOT NULL AS ok`;
+  return ok;
+}
+
+export type PushSubscriptionRow = { id: number; owner: string; endpoint: string; p256dh: string; auth: string };
+
+/** Guarda o aparelho. Se o mesmo aparelho já existia (de outra conta), passa a ser desta. */
+export async function savePushSubscription(owner: string, s: { endpoint: string; p256dh: string; auth: string }): Promise<void> {
+  await sql`
+    INSERT INTO push_subscriptions (owner, endpoint, p256dh, auth) VALUES (${owner}, ${s.endpoint}, ${s.p256dh}, ${s.auth})
+    ON CONFLICT (endpoint) DO UPDATE SET owner = EXCLUDED.owner, p256dh = EXCLUDED.p256dh, auth = EXCLUDED.auth
+  `;
+}
+
+export async function deletePushSubscription(owner: string, endpoint: string): Promise<void> {
+  await sql`DELETE FROM push_subscriptions WHERE owner = ${owner} AND endpoint = ${endpoint}`;
+}
+
+/** Aparelho que o serviço de push disse que não existe mais (desinstalou, trocou de celular...). */
+export async function deleteExpiredSubscription(id: number): Promise<void> {
+  await sql`DELETE FROM push_subscriptions WHERE id = ${id}`;
+}
+
+export async function pushSubscriptions(owner?: string): Promise<PushSubscriptionRow[]> {
+  const rows = owner
+    ? await sql`SELECT id, owner, endpoint, p256dh, auth FROM push_subscriptions WHERE owner = ${owner}`
+    : await sql`SELECT id, owner, endpoint, p256dh, auth FROM push_subscriptions ORDER BY owner`;
+  return rows.map((r) => ({ id: r.id, owner: r.owner, endpoint: r.endpoint, p256dh: r.p256dh, auth: r.auth }));
+}
+
+export async function lastNotificationDay(owner: string): Promise<string | null> {
+  const rows = await sql`SELECT last_sent_on::text AS d FROM notification_settings WHERE owner = ${owner}`;
+  return rows[0]?.d ?? null;
+}
+
+export async function markNotificationSent(owner: string, day: string): Promise<void> {
+  await sql`
+    INSERT INTO notification_settings (owner, last_sent_on) VALUES (${owner}, ${day})
+    ON CONFLICT (owner) DO UPDATE SET last_sent_on = EXCLUDED.last_sent_on
+  `;
+}
+
+/** Dia (em São Paulo) do último lançamento anotado, para o aviso "faz dias que você não anota". */
+export async function lastEntryDay(owner: string): Promise<string | null> {
+  const rows = await sql`
+    SELECT (MAX(created_at) AT TIME ZONE 'America/Sao_Paulo')::date::text AS d FROM transactions WHERE owner = ${owner}
+  `;
+  return rows[0]?.d ?? null;
+}

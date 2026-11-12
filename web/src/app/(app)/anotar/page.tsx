@@ -6,6 +6,7 @@ import { LoadingLogo } from "@/components/loading-logo";
 import * as db from "@/lib/db";
 import { categoryName, favoriteExpenseCategories } from "@/lib/categories";
 import { isoDate, shiftMonth, todayInSaoPaulo } from "@/lib/money";
+import { pushConfigured } from "@/lib/push";
 import { currentMember } from "@/lib/session";
 
 export default function Page({ searchParams }: PageProps<"/anotar">) {
@@ -38,6 +39,7 @@ async function Form({ searchParams }: { searchParams: PageProps<"/anotar">["sear
         id: r.id, kind: r.kind, name: r.description || categoryName(r.category), amountCents: r.amountCents, category: r.category, dayOfMonth: r.dayOfMonth,
       }))}
       favorites={favoriteExpenseCategories(mostUsed)}
+      pushKey={pushConfigured() && (await db.notificationsReady()) ? process.env.VAPID_PUBLIC_KEY : undefined}
     />
   );
 }
