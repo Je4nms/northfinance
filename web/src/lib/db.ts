@@ -356,3 +356,66 @@ export async function payBill(
     return true;
   });
 }
+
+// --- Dia do salário e "Sobrou dinheiro?" ---
+
+/** Erro do Postgres "coluna não existe": o SQL do dia do salário ainda não foi rodado. */
+const missingColumn = (e: unknown) => (e as { code?: string })?.code === "42703";
+// As colunas payday_kind e payday_day são criadas por web/sql/dia-do-salario.sql.
+
+const SALARY = "💼 Salário";
+
+/** A regra salva pela pessoa, ou null (não escolheu ainda, ou o SQL ainda não foi rodado). */
+export async function getPaydayRule(email: string): Promise<{ kind: string; day: number | null } | null> {
+  try {
+    const rows = await sql`SELECT payday_kind, payday_day FROM members WHERE email = ${email}`;
+    return rows[0]?.payday_kind ? { kind: rows[0].payday_kind, day: rows[0].payday_day } : null;
+  } catch (e) {
+    if (missingColumn(e)) return null;
+    throw e;
+  }
+}
+
+/** Salva a regra. Devolve false se as colunas ainda não existem no banco. */
+export async function setPaydayRule(email: string, kind: string, day: number | null): Promise<boolean> {
+  try {
+    await sql`UPDATE members SET payday_kind = ${kind}, payday_day = ${day} WHERE email = ${email}`;
+    return true;
+  } catch (e) {
+    if (missingColumn(e)) return false;
+    throw e;
+  }
+}
+
+/** Dia do maior salário de cada mês, desde `since` (para descobrir a regra sozinho). */
+export async function salaryDays(owner: string, since: Date): Promise<Date[]> {
+  const rows = await sql`
+    SELECT DISTINCT ON (date_trunc('month', occurred_on)) occurred_on::text AS day
+    FROM transactions
+    WHERE owner = ${owner} AND kind = 'income' AND category = ${SALARY} AND occurred_on >= ${since}
+    ORDER BY date_trunc('month', occurred_on), amount_cents DESC
+  `;
+  return rows.map((r) => new Date(r.day + "T00:00:00Z"));
+}
+
+/** Se algum salário já foi anotado a partir de `since` (para a linha sumir quando o salário entra). */
+export async function salaryRecordedSince(owner: string, since: Date): Promise<boolean> {
+  const rows = await sql`
+    SELECT 1 FROM transactions
+    WHERE owner = ${owner} AND kind = 'income' AND category = ${SALARY} AND occurred_on >= ${since}
+    LIMIT 1
+  `;
+  return rows.length > 0;
+}
+
+/** Gasto médio por mês entre `start` e `end`, contando só os meses que tiveram gastos. */
+export async function averageMonthlyExpense(owner: string, start: Date, end: Date): Promise<number | null> {
+  const rows = await sql`
+    SELECT COALESCE(SUM(amount_cents), 0)::bigint AS total,
+           COUNT(DISTINCT date_trunc('month', occurred_on))::int AS months
+    FROM transactions
+    WHERE owner = ${owner} AND kind = 'expense' AND occurred_on >= ${start} AND occurred_on < ${end}
+  `;
+  const months = rows[0].months as number;
+  return months > 0 ? Math.round(Number(rows[0].total) / months) : null;
+}
