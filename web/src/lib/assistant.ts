@@ -115,6 +115,9 @@ async function runTool(email: string, name: string, input: unknown): Promise<{ c
 
 // --- As regras do assistente ---
 
+// No fim da resposta a IA escreve as sugestões depois desta marca; o app tira ela do texto
+const SUGGESTIONS = "<<sugestoes>>";
+
 function systemPrompt(today: Date): string {
   const weekday = today.toLocaleDateString("pt-BR", { weekday: "long", timeZone: "UTC" });
   return `Você é o assistente do NorthFinance, um app de finanças pessoais simples. A pessoa anota os ganhos e gastos dela no app e te pergunta sobre eles.
@@ -122,8 +125,9 @@ function systemPrompt(today: Date): string {
 Hoje é ${isoDate(today)} (${weekday}). "Este mês" vai do dia 1 até hoje.
 
 Como responder:
-- Em português do Brasil, de forma curta e simples: no máximo 3 frases, ou uma lista curta com "-". Sem títulos.
-- Valores sempre como R$ 1.234,56.
+- Em português do Brasil, de forma curta e simples: no máximo 3 frases, ou uma lista curta com "-". Sem títulos e sem emojis.
+- Não escreva nada antes de usar as ferramentas: consulte primeiro e depois responda.
+- Valores sempre como R$ 1.234,56. Marque os valores assim, para o app colorir: {-R$ 245,90} para gastos e {+R$ 2.500,00} para ganhos, economia ou dinheiro guardado. Use **negrito** só para destacar nomes ou quantidades.
 - Use sempre as ferramentas para conseguir os números. Nunca invente valores, datas ou lançamentos.
 - Se a ferramenta não encontrar nada, diga com clareza que não encontrou (ex.: "Não achei nenhum gasto com viagem em outubro.").
 - O dinheiro anotado nas Metas não é gasto: é dinheiro que a pessoa guardou no banco dela.
@@ -132,24 +136,78 @@ Como responder:
 Limites:
 - Você só consulta. Não consegue criar, editar nem apagar lançamentos; se pedirem, explique que isso é feito pelo próprio app (aba Anotar ou Extrato).
 - Não recomende investimentos, produtos ou bancos específicos. Pode explicar conceitos de educação financeira de forma geral.
-- Fale só das finanças da pessoa e de educação financeira. Para outros assuntos, diga com gentileza que só ajuda com as finanças no NorthFinance.`;
+- Fale só das finanças da pessoa e de educação financeira. Para outros assuntos, diga com gentileza que só ajuda com as finanças no NorthFinance.
+
+No fim de toda resposta, escreva numa linha separada ${SUGGESTIONS} seguido de 2 perguntas curtas (até 6 palavras cada) que a pessoa provavelmente faria em seguida, separadas por "|". Exemplo:
+${SUGGESTIONS}E no mês passado?|Quais foram os maiores?`;
 }
 
 // --- A conversa ---
 
 export type ChatTurn = { role: "user" | "assistant"; text: string };
 
+/** O que vai para a tela, aos poucos: o texto, o que a IA está consultando e as sugestões do fim. */
+export type ChatEvent =
+  | { t: "text"; text: string }
+  | { t: "status"; text: string } // também apaga o texto que veio antes de consultar ("Vou conferir...")
+  | { t: "suggestions"; items: string[] };
+
+const MONTHS = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
+
+/** "Consultando seus gastos de novembro...": o que a pessoa vê enquanto a ferramenta roda. */
+function statusFor(name: string, input: unknown): string {
+  const p = readPeriod(input);
+  const when = typeof p === "string" ? ""
+    : p.start.getUTCMonth() === new Date(p.end.getTime() - DAY).getUTCMonth() && p.start.getUTCFullYear() === new Date(p.end.getTime() - DAY).getUTCFullYear()
+      ? ` de ${MONTHS[p.start.getUTCMonth()]}`
+      : " do período";
+  const i = input as { texto?: unknown; categoria?: unknown };
+  if (name === "gastos_por_categoria") return `Separando seus gastos${when} por categoria...`;
+  if (name === "buscar_lancamentos" && typeof i?.texto === "string" && i.texto.trim()) return `Procurando lançamentos de "${i.texto.trim().slice(0, 30)}"${when}...`;
+  if (name === "buscar_lancamentos" && typeof i?.categoria === "string") return `Procurando gastos com ${i.categoria}${when}...`;
+  if (name === "buscar_lancamentos") return `Procurando seus lançamentos${when}...`;
+  return `Somando seus ganhos e gastos${when}...`;
+}
+
 /**
- * Responde a última pergunta, escrevendo o texto aos poucos em `onText`.
+ * Separa o texto das sugestões enquanto ele chega: manda para a tela só o que vem antes da marca
+ * (e segura um pedaço que ainda pode virar a marca). No fim, devolve as sugestões.
+ */
+function suggestionFilter(onText: (text: string) => void) {
+  let full = "";
+  let sent = 0;
+  return {
+    push(delta: string) {
+      full += delta;
+      const marker = full.indexOf(SUGGESTIONS);
+      let safe = marker >= 0 ? marker : full.length;
+      if (marker < 0) {
+        for (let k = Math.min(SUGGESTIONS.length - 1, full.length); k > 0; k--) {
+          if (SUGGESTIONS.startsWith(full.slice(-k))) { safe = full.length - k; break; }
+        }
+      }
+      if (safe > sent) { onText(full.slice(sent, safe)); sent = safe; }
+    },
+    end(): string[] {
+      const marker = full.indexOf(SUGGESTIONS);
+      if (marker < 0) { if (full.length > sent) onText(full.slice(sent)); return []; }
+      return full.slice(marker + SUGGESTIONS.length).split("|").map((x) => x.trim()).filter((x) => x && x.length <= 60).slice(0, 2);
+    },
+  };
+}
+
+/**
+ * Responde a última pergunta, mandando os eventos para a tela aos poucos.
  * A IA pode chamar as ferramentas algumas vezes antes de responder.
  */
-export async function answer(email: string, today: Date, history: ChatTurn[], onText: (text: string) => void): Promise<void> {
+export async function answer(email: string, today: Date, history: ChatTurn[], emit: (event: ChatEvent) => void): Promise<void> {
   const client = new Anthropic();
   const messages: Anthropic.Beta.BetaMessageParam[] = history.map((t) => ({ role: t.role, content: t.text }));
   let wroteText = false;
   let jsonRetries = 0;
 
   for (let turn = 0; turn < MAX_TURNS; turn++) {
+    const filter = suggestionFilter((text) => { wroteText = true; emit({ t: "text", text }); });
     const stream = client.beta.messages.stream({
       model: MODEL,
       max_tokens: 16000,
@@ -162,10 +220,7 @@ export async function answer(email: string, today: Date, history: ChatTurn[], on
       tools: TOOLS,
       messages,
     });
-    stream.on("text", (delta) => {
-      wroteText = true;
-      onText(delta);
-    });
+    stream.on("text", (delta) => filter.push(delta));
 
     let message: Anthropic.Beta.BetaMessage;
     try {
@@ -178,13 +233,22 @@ export async function answer(email: string, today: Date, history: ChatTurn[], on
     }
 
     if (message.stop_reason === "refusal") {
-      if (!wroteText) onText("Não consigo ajudar com essa pergunta. Pergunte sobre os seus ganhos e gastos.");
+      emit({ t: "status", text: "" });
+      emit({ t: "text", text: "Não consigo ajudar com essa pergunta. Pergunte sobre os seus ganhos e gastos." });
       return;
     }
     const toolUses = message.content.filter((b): b is Anthropic.Beta.BetaToolUseBlock => b.type === "tool_use");
     // Terminou de responder (ou parou por outro motivo, como max_tokens): não roda ferramenta pela metade
-    if (message.stop_reason !== "tool_use" || toolUses.length === 0) return;
+    if (message.stop_reason !== "tool_use" || toolUses.length === 0) {
+      const items = filter.end();
+      if (items.length) emit({ t: "suggestions", items });
+      if (!wroteText) emit({ t: "text", text: "Não consegui responder essa. Tente perguntar de outro jeito." });
+      return;
+    }
 
+    // Vai consultar: a tela troca o "Vou conferir..." pela etiqueta do que está sendo consultado
+    wroteText = false;
+    emit({ t: "status", text: statusFor(toolUses[0].name, toolUses[0].input) });
     messages.push({ role: "assistant", content: message.content });
     const results: Anthropic.Beta.BetaToolResultBlockParam[] = [];
     for (const use of toolUses) {
@@ -192,7 +256,7 @@ export async function answer(email: string, today: Date, history: ChatTurn[], on
       results.push({ type: "tool_result", tool_use_id: use.id, content: result.content, ...(result.isError ? { is_error: true } : {}) });
     }
     messages.push({ role: "user", content: results });
-    if (wroteText) onText("\n\n");
   }
-  if (!wroteText) onText("Não consegui terminar essa resposta. Tente perguntar de um jeito mais simples.");
+  emit({ t: "status", text: "" });
+  emit({ t: "text", text: "Não consegui terminar essa resposta. Tente perguntar de um jeito mais simples." });
 }

@@ -1,8 +1,9 @@
-// Rota do assistente de IA. Recebe a conversa e devolve a resposta em texto, aos poucos (streaming).
+// Rota do assistente de IA. Recebe a conversa e devolve a resposta aos poucos (streaming),
+// uma linha JSON por evento: {"t":"text"}, {"t":"status"}, {"t":"suggestions"} ou {"t":"error"}.
 // Antes de chamar a IA confere: login, convite, se a IA está ativada, o consentimento e o limite do dia.
 import Anthropic from "@anthropic-ai/sdk";
 
-import { AI_DAILY_LIMIT, answer, type ChatTurn } from "@/lib/assistant";
+import { AI_DAILY_LIMIT, answer, type ChatEvent, type ChatTurn } from "@/lib/assistant";
 import * as db from "@/lib/db";
 import { todayInSaoPaulo } from "@/lib/money";
 import { currentUser } from "@/lib/session";
@@ -44,8 +45,9 @@ export async function POST(request: Request) {
   const encoder = new TextEncoder();
   const body = new ReadableStream({
     async start(controller) {
+      const send = (event: ChatEvent | { t: "error"; text: string }) => controller.enqueue(encoder.encode(JSON.stringify(event) + "\n"));
       try {
-        await answer(user.email, todayInSaoPaulo(), history, (text) => controller.enqueue(encoder.encode(text)));
+        await answer(user.email, todayInSaoPaulo(), history, send);
       } catch (err) {
         // Mensagens simples para a pessoa; o detalhe fica só no log do servidor
         console.error("assistente:", err);
@@ -54,11 +56,11 @@ export async function POST(request: Request) {
           : err instanceof Anthropic.RateLimitError ? "Muita gente perguntando agora. Tente de novo em alguns segundos."
           : err instanceof Anthropic.APIError && err.status === 400 ? "O assistente não conseguiu entender essa pergunta."
           : "O assistente não conseguiu responder agora. Tente de novo.";
-        controller.enqueue(encoder.encode(`\n\n${message}`));
+        send({ t: "error", text: message });
       } finally {
         controller.close();
       }
     },
   });
-  return new Response(body, { headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" } });
+  return new Response(body, { headers: { "Content-Type": "application/x-ndjson; charset=utf-8", "Cache-Control": "no-store" } });
 }
