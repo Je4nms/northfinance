@@ -7,6 +7,16 @@ export const EXPENSE_CATEGORIES = [
   "🛒 Mercado", "🍔 Comida fora", "🚌 Transporte", "⛽ Gasolina", "🏠 Casa", "💡 Contas", "💊 Saúde",
   "🎓 Educação", "🎮 Lazer", "📺 Assinaturas", "🛍️ Compras", "🐾 Pets", "📦 Outros",
 ];
+// As 5 que aparecem primeiro no Anotar para quem ainda não tem histórico
+export const DEFAULT_FAVORITES = ["🛒 Mercado", "🍔 Comida fora", "🚌 Transporte", "💡 Contas", "🎮 Lazer"];
+
+/** As 5 categorias de gasto que aparecem primeiro: as mais usadas, completando com as mais comuns. */
+export function favoriteExpenseCategories(mostUsed: string[]): string[] {
+  const list = mostUsed.filter((c) => EXPENSE_CATEGORIES.includes(c));
+  for (const c of DEFAULT_FAVORITES) if (list.length < 5 && !list.includes(c)) list.push(c);
+  return list.slice(0, 5);
+}
+
 export const INCOME_CATEGORIES = ["💼 Salário", "💸 Pix recebido", "🧾 Extra", "🏷️ Vendas", "📦 Outros"];
 
 // Cor fixa para cada categoria, pelo nome. "Outros" e desconhecidas ficam cinza.

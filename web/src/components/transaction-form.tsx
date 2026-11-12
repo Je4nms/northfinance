@@ -1,9 +1,9 @@
 "use client";
 // Formulário de lançamento: o mesmo para Anotar (novo) e Editar (já existente)
-import { CalendarClock, CalendarDays, Check, Repeat, Trash2 } from "lucide-react";
+import { CalendarClock, CalendarDays, Check, ChevronDown, Repeat, Trash2 } from "lucide-react";
 import { useActionState, useEffect, useRef, useState } from "react";
 
-import { addBill, addTransaction, deleteBill, updateTransaction, type FormState } from "@/app/actions";
+import { addBill, addTransaction, deleteBill, deleteRecurring, updateTransaction, type FormState } from "@/app/actions";
 import { CategoryGlyph, CategoryIcon } from "@/components/category-icon";
 import { categoryName, EXPENSE_CATEGORIES, INCOME_CATEGORIES } from "@/lib/categories";
 import { haptic } from "@/lib/haptic";
@@ -12,6 +12,7 @@ import { toBRL } from "@/lib/money";
 type Initial = { kind: "expense" | "income"; amount: string; category: string; description: string; date: string };
 type Kind = "expense" | "income" | "bill";
 export type BillItem = { id: number; name: string; amountCents: number; category: string; dueDay: number };
+export type RecurringItem = { id: number; kind: "expense" | "income"; name: string; amountCents: number; category: string; dayOfMonth: number };
 
 const KINDS: { value: Kind; label: string }[] = [
   { value: "expense", label: "Gasto" },
@@ -23,9 +24,11 @@ const KINDS: { value: Kind; label: string }[] = [
  * Formulário do Anotar (Gasto, Ganho ou Conta a vencer) e do Editar (só Gasto ou Ganho).
  * "Conta" guarda uma conta que vence todo mês: o app avisa antes, e você confirma quando pagar.
  */
-export function TransactionForm({ today, editId, initial, startKind, bills = [] }: {
-  today: string; editId?: number; initial?: Initial; startKind?: Kind; bills?: BillItem[];
+export function TransactionForm({ today, editId, initial, startKind, bills = [], recurring = [], favorites }: {
+  today: string; editId?: number; initial?: Initial; startKind?: Kind; bills?: BillItem[]; recurring?: RecurringItem[];
+  favorites?: string[]; // as 5 categorias de gasto que aparecem primeiro
 }) {
+  const [allCategories, setAllCategories] = useState(false);
   const [kind, setKind] = useState<Kind>(initial?.kind ?? startKind ?? "expense");
   // Data: "Hoje" e "Ontem" num toque; "Outro dia" abre o calendário do celular
   const yesterday = new Date(Date.parse(today + "T00:00:00Z") - 86_400_000).toISOString().slice(0, 10);
@@ -54,7 +57,15 @@ export function TransactionForm({ today, editId, initial, startKind, bills = [] 
     return () => clearTimeout(timer);
   }, [celebrate]);
 
-  const categories = kind === "income" ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
+  // Gastos e contas: só as 5 principais (e a já escolhida, no Editar), com "Mais categorias" para as outras
+  const all = kind === "income" ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
+  const preselected = isBill ? "💡 Contas" : initial?.category;
+  // Na ordem de uso (a mais usada primeiro); a já escolhida entra no fim, se não estiver entre elas
+  const top = kind === "income" || !favorites
+    ? all
+    : [...favorites, ...(preselected && !favorites.includes(preselected) ? [preselected] : [])];
+  const categories = allCategories ? all : top;
+  const fixed = recurring.filter((r) => r.kind === kind);
   const kinds = editId ? KINDS.filter((k) => k.value !== "bill") : KINDS;
 
   return (
@@ -63,7 +74,7 @@ export function TransactionForm({ today, editId, initial, startKind, bills = [] 
         <input type="hidden" name="kind" value={kind} />
         <div className={`grid rounded-2xl bg-card p-1 ${kinds.length === 3 ? "grid-cols-3" : "grid-cols-2"}`}>
           {kinds.map((k) => (
-            <button key={k.value} type="button" onClick={() => setKind(k.value)} aria-pressed={kind === k.value}
+            <button key={k.value} type="button" onClick={() => { setKind(k.value); setAllCategories(false); }} aria-pressed={kind === k.value}
               className={`rounded-xl py-2.5 font-semibold ${kind === k.value ? "bg-bg shadow-sm" : "text-muted"}`}>
               {k.label}
             </button>
@@ -100,6 +111,11 @@ export function TransactionForm({ today, editId, initial, startKind, bills = [] 
               </label>
             ))}
           </div>
+          {categories.length < all.length && (
+            <button type="button" onClick={() => setAllCategories(true)} className="mt-2 flex items-center gap-1 text-sm font-semibold text-primary">
+              Mais categorias <ChevronDown size={16} />
+            </button>
+          )}
         </fieldset>
 
         {isBill ? (
@@ -171,25 +187,17 @@ export function TransactionForm({ today, editId, initial, startKind, bills = [] 
       </form>
 
       {isBill && bills.length > 0 && (
-        <section className="mt-8">
-          <h2 className="font-bold">Suas contas</h2>
-          <ul className="mt-1 divide-y divide-line">
-            {bills.map((b) => (
-              <li key={b.id} className="flex items-center gap-3 py-2.5">
-                <CategoryIcon category={b.category} size={38} />
-                <div className="min-w-0 flex-1">
-                  <p className="truncate font-semibold">{b.name}</p>
-                  <p className="text-sm text-muted">Todo dia {b.dueDay} · {toBRL(b.amountCents)}</p>
-                </div>
-                <form action={deleteBill.bind(null, b.id)}>
-                  <button aria-label={`Apagar a conta ${b.name}`} className="flex h-10 w-10 items-center justify-center rounded-full text-muted hover:text-expense">
-                    <Trash2 size={18} />
-                  </button>
-                </form>
-              </li>
-            ))}
-          </ul>
-        </section>
+        <SavedList title="Suas contas" items={bills.map((b) => ({
+          key: b.id, category: b.category, name: b.name, detail: `Todo dia ${b.dueDay} · ${toBRL(b.amountCents)}`,
+          remove: deleteBill.bind(null, b.id), removeLabel: `Apagar a conta ${b.name}`,
+        }))} />
+      )}
+
+      {!editId && !isBill && fixed.length > 0 && (
+        <SavedList title={kind === "income" ? "Seus ganhos fixos" : "Seus gastos fixos"} items={fixed.map((r) => ({
+          key: r.id, category: r.category, name: r.name, detail: `Todo dia ${r.dayOfMonth} · ${toBRL(r.amountCents)}`,
+          remove: deleteRecurring.bind(null, r.id), removeLabel: `Parar de repetir ${r.name}`,
+        }))} />
       )}
 
       {/* Confirmação animada: um ✓ verde que aparece e some */}
@@ -207,5 +215,33 @@ export function TransactionForm({ today, editId, initial, startKind, bills = [] 
         </div>
       )}
     </>
+  );
+}
+
+/** Lista embaixo do formulário: contas a vencer ou gastos fixos, com a lixeira para apagar. */
+function SavedList({ title, items }: {
+  title: string;
+  items: { key: number; category: string; name: string; detail: string; remove: () => Promise<void>; removeLabel: string }[];
+}) {
+  return (
+    <section className="mt-8">
+      <h2 className="font-bold">{title}</h2>
+      <ul className="mt-1 divide-y divide-line">
+        {items.map((i) => (
+          <li key={i.key} className="flex items-center gap-3 py-2.5">
+            <CategoryIcon category={i.category} size={38} />
+            <div className="min-w-0 flex-1">
+              <p className="truncate font-semibold">{i.name}</p>
+              <p className="text-sm text-muted">{i.detail}</p>
+            </div>
+            <form action={i.remove}>
+              <button aria-label={i.removeLabel} className="flex h-10 w-10 items-center justify-center rounded-full text-muted hover:text-expense">
+                <Trash2 size={18} />
+              </button>
+            </form>
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }
