@@ -582,35 +582,11 @@ export async function searchTransactions(
 
 // --- Notificações ---
 // As tabelas push_subscriptions e notification_settings são criadas por web/sql/notificacoes.sql.
-
-export type NotificationSettings = {
-  bills: boolean; weekly: boolean; monthly: boolean; payday: boolean; inactive: boolean; newYear: boolean; showValues: boolean;
-};
-
-export const DEFAULT_NOTIFICATIONS: NotificationSettings = {
-  bills: true, weekly: true, monthly: true, payday: true, inactive: true, newYear: true, showValues: false,
-};
+// Todos os avisos ficam ligados e sem valores; de notification_settings só usamos o dia do último aviso.
 
 export async function notificationsReady(): Promise<boolean> {
   const [{ ok }] = await sql`SELECT to_regclass('notification_settings') IS NOT NULL AS ok`;
   return ok;
-}
-
-export async function getNotificationSettings(owner: string): Promise<NotificationSettings> {
-  const rows = await sql`SELECT * FROM notification_settings WHERE owner = ${owner}`;
-  const r = rows[0];
-  return r
-    ? { bills: r.bills, weekly: r.weekly, monthly: r.monthly, payday: r.payday, inactive: r.inactive, newYear: r.new_year, showValues: r.show_values }
-    : DEFAULT_NOTIFICATIONS;
-}
-
-export async function saveNotificationSettings(owner: string, s: NotificationSettings): Promise<void> {
-  await sql`
-    INSERT INTO notification_settings (owner, bills, weekly, monthly, payday, inactive, new_year, show_values)
-    VALUES (${owner}, ${s.bills}, ${s.weekly}, ${s.monthly}, ${s.payday}, ${s.inactive}, ${s.newYear}, ${s.showValues})
-    ON CONFLICT (owner) DO UPDATE SET bills = EXCLUDED.bills, weekly = EXCLUDED.weekly, monthly = EXCLUDED.monthly,
-      payday = EXCLUDED.payday, inactive = EXCLUDED.inactive, new_year = EXCLUDED.new_year, show_values = EXCLUDED.show_values
-  `;
 }
 
 export type PushSubscriptionRow = { id: number; owner: string; endpoint: string; p256dh: string; auth: string };

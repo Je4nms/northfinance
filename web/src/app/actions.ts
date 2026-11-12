@@ -263,26 +263,6 @@ export async function removePushSubscription(endpoint: string) {
   if (typeof endpoint === "string") await db.deletePushSubscription(member.email, endpoint);
 }
 
-export async function saveNotificationSettings(settings: db.NotificationSettings) {
-  const member = await currentMember();
-  const b = (v: unknown) => v === true;
-  await db.saveNotificationSettings(member.email, {
-    bills: b(settings.bills), weekly: b(settings.weekly), monthly: b(settings.monthly), payday: b(settings.payday),
-    inactive: b(settings.inactive), newYear: b(settings.newYear), showValues: b(settings.showValues),
-  });
-}
-
-/** Aviso de teste, para a pessoa ver que está funcionando. */
-export async function sendTestNotification(): Promise<{ sent: number }> {
-  const member = await currentMember();
-  const { pushConfigured, pushTo } = await import("@/lib/push");
-  if (!pushConfigured()) return { sent: 0 };
-  const { sent } = await pushTo(await db.pushSubscriptions(member.email), {
-    title: "Tudo certo!", body: "As notificações do NorthFinance estão ligadas.", url: "/",
-  });
-  return { sent };
-}
-
 export async function deleteTransaction(id: number) {
   const member = await currentMember();
   if (!Number.isSafeInteger(id)) return;

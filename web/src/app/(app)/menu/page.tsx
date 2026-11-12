@@ -29,7 +29,7 @@ async function Menu({ searchParams }: { searchParams: PageProps<"/menu">["search
     `Entra com a sua conta Google: ${APP_URL} Código de convite: ${process.env.INVITE_CODE ?? ""}`;
   const card = "space-y-3 rounded-3xl bg-card p-4";
   // A seção só aparece com as chaves configuradas na Vercel e o SQL rodado
-  const notifications = pushConfigured() && (await db.notificationsReady()) ? await db.getNotificationSettings(member.email) : null;
+  const notifications = pushConfigured() && (await db.notificationsReady());
 
   return (
     <div className="nf-fade-in mx-auto max-w-[520px] space-y-4">
@@ -64,7 +64,7 @@ async function Menu({ searchParams }: { searchParams: PageProps<"/menu">["search
       {notifications && (
         <section id="notificacoes" className={card}>
           <h2 className="flex items-center gap-2 font-bold"><Bell size={18} className="text-primary" /> Notificações</h2>
-          <NotificationsPanel publicKey={process.env.VAPID_PUBLIC_KEY!} initial={notifications} />
+          <NotificationsPanel publicKey={process.env.VAPID_PUBLIC_KEY!} />
         </section>
       )}
 

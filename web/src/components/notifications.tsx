@@ -1,11 +1,13 @@
 "use client";
-// Notificações no celular: ativar (pede permissão uma vez), escolher os avisos e mandar um de teste.
+// Notificações no celular: todos os avisos ficam ligados, sem opções. O celular exige um "Permitir" uma vez,
+// e o pedido só pode vir de um toque: por isso o app oferece uma vez (na 3ª visita) e deixa ligar/desligar no Menu.
 // No iPhone só funciona com o app instalado na Tela de Início.
 import { Bell, BellOff } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
-import { removePushSubscription, savePushSubscription, saveNotificationSettings, sendTestNotification } from "@/app/actions";
-import type { NotificationSettings } from "@/lib/db";
+import { Sheet } from "@/components/sheet";
+
+import { removePushSubscription, savePushSubscription } from "@/app/actions";
 
 type State = "loading" | "unsupported" | "ios-install" | "denied" | "off" | "on";
 
@@ -78,26 +80,9 @@ function usePush(publicKey: string) {
   return { state, busy, enable, disable };
 }
 
-const TYPES: { key: keyof NotificationSettings; label: string; hint: string }[] = [
-  { key: "bills", label: "Contas a vencer", hint: "3 dias antes e no dia" },
-  { key: "weekly", label: "Resumo da semana", hint: "Aos domingos" },
-  { key: "monthly", label: "Fechamento do mês", hint: "Todo dia 1" },
-  { key: "payday", label: "Salário chegando", hint: "3 dias antes do salário" },
-  { key: "inactive", label: "Lembrete de anotar", hint: "Depois de 5 dias sem anotar nada" },
-  { key: "newYear", label: "Metas para o ano novo", hint: "Em dezembro" },
-];
-
-/** Seção do Menu: ativar, escolher os avisos, mostrar ou esconder valores e mandar um de teste. */
-export function NotificationsPanel({ publicKey, initial }: { publicKey: string; initial: NotificationSettings }) {
+/** Seção do Menu: só ligar e desligar (todos os avisos vêm juntos, no máximo um por dia). */
+export function NotificationsPanel({ publicKey }: { publicKey: string }) {
   const { state, busy, enable, disable } = usePush(publicKey);
-  const [settings, setSettings] = useState(initial);
-  const [test, setTest] = useState<string>();
-
-  function toggle(key: keyof NotificationSettings) {
-    const next = { ...settings, [key]: !settings[key] };
-    setSettings(next);
-    saveNotificationSettings(next);
-  }
 
   return (
     <div className="space-y-3">
@@ -113,52 +98,24 @@ export function NotificationsPanel({ publicKey, initial }: { publicKey: string; 
           As notificações estão bloqueadas para o NorthFinance. Libere nos ajustes do celular (Notificações) e volte aqui.
         </p>
       )}
+      {(state === "off" || state === "on") && (
+        <p className="text-sm text-muted">Contas a vencer, resumo da semana e lembretes. No máximo um por dia, sem mostrar valores.</p>
+      )}
       {state === "off" && (
-        <>
-          <p className="text-sm text-muted">Receba avisos de contas a vencer, o resumo da semana e lembretes. No máximo um por dia.</p>
-          <button type="button" onClick={enable} disabled={busy} className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary py-3 font-semibold text-white disabled:opacity-60">
-            <Bell size={18} /> {busy ? "Ativando..." : "Ativar notificações"}
-          </button>
-        </>
+        <button type="button" onClick={enable} disabled={busy} className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary py-3 font-semibold text-white disabled:opacity-60">
+          <Bell size={18} /> {busy ? "Ativando..." : "Ativar notificações"}
+        </button>
       )}
       {state === "on" && (
-        <>
-          <ul className="divide-y divide-line">
-            {TYPES.map((t) => (
-              <li key={t.key}>
-                <Switch label={t.label} hint={t.hint} checked={settings[t.key]} onChange={() => toggle(t.key)} />
-              </li>
-            ))}
-            <li>
-              <Switch label="Mostrar valores" hint="Aparece o valor na tela de bloqueio (ex.: R$ 120,00)" checked={settings.showValues} onChange={() => toggle("showValues")} />
-            </li>
-          </ul>
-          <div className="flex gap-2">
-            <button type="button" className="flex-1 rounded-2xl border border-line py-2.5 text-sm font-semibold"
-              onClick={async () => { setTest("Enviando..."); const r = await sendTestNotification(); setTest(r.sent ? "Aviso de teste enviado!" : "Não consegui enviar. Tente ativar de novo."); }}>
-              Mandar um aviso de teste
-            </button>
-            <button type="button" onClick={disable} disabled={busy} className="flex items-center gap-1.5 rounded-2xl px-3 text-sm font-semibold text-muted">
-              <BellOff size={16} /> Desligar
-            </button>
-          </div>
-          {test && <p className="text-sm text-muted">{test}</p>}
-        </>
+        <div className="flex items-center gap-3 rounded-2xl bg-bg px-4 py-3">
+          <Bell size={18} className="flex-none text-primary" />
+          <p className="flex-1 font-semibold">Notificações ligadas</p>
+          <button type="button" onClick={disable} disabled={busy} className="flex items-center gap-1.5 text-sm font-semibold text-muted">
+            <BellOff size={16} /> Desligar
+          </button>
+        </div>
       )}
     </div>
-  );
-}
-
-function Switch({ label, hint, checked, onChange }: { label: string; hint: string; checked: boolean; onChange: () => void }) {
-  return (
-    <label className="flex cursor-pointer items-center gap-3 py-2.5">
-      <span className="flex-1">
-        <span className="block font-semibold">{label}</span>
-        <span className="text-sm text-muted">{hint}</span>
-      </span>
-      <input type="checkbox" role="switch" checked={checked} onChange={onChange} className="peer sr-only" />
-      <span aria-hidden className="relative h-7 w-12 flex-none rounded-full bg-line transition-colors peer-checked:bg-primary peer-focus-visible:outline-3 peer-focus-visible:outline-primary after:absolute after:top-1 after:left-1 after:h-5 after:w-5 after:rounded-full after:bg-white after:transition-transform peer-checked:after:translate-x-5" />
-    </label>
   );
 }
 
@@ -174,5 +131,48 @@ export function PushHint({ publicKey }: { publicKey: string }) {
         {busy ? "..." : "Ativar"}
       </button>
     </div>
+  );
+}
+
+const VISITS = "nf-visitas";
+const OFFERED = "nf-avisos-oferecido";
+
+/**
+ * Na 3ª vez que a pessoa abre o app, oferece os avisos uma única vez.
+ * Se ela tocar em "Agora não" (ou fechar), não aparece de novo; dá para ativar depois pelo Menu.
+ */
+export function PushOffer({ publicKey }: { publicKey: string }) {
+  const { state, busy, enable } = usePush(publicKey);
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    if (state !== "off") return;
+    try {
+      if (localStorage.getItem(OFFERED)) return;
+      // Conta uma visita por sessão (abrir o app), não a cada volta para o Início
+      if (!sessionStorage.getItem(VISITS)) {
+        sessionStorage.setItem(VISITS, "1");
+        localStorage.setItem(VISITS, String(Number(localStorage.getItem(VISITS) ?? 0) + 1));
+      }
+      if (Number(localStorage.getItem(VISITS)) < 3) return;
+      localStorage.setItem(OFFERED, "1");
+      const timer = setTimeout(() => setOpen(true), 1200);
+      return () => clearTimeout(timer);
+    } catch {}
+  }, [state]);
+
+  if (!open) return null;
+  return (
+    <Sheet title="Quer receber avisos?" onClose={() => setOpen(false)}>
+      <div className="pb-1 text-center">
+        <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-primary/15 text-primary"><Bell size={26} /></span>
+        <p className="mt-3 text-muted">Contas a vencer, resumo da semana e lembretes. No máximo um por dia, sem mostrar valores.</p>
+        <button type="button" disabled={busy} onClick={async () => { await enable(); setOpen(false); }}
+          className="mt-5 w-full rounded-2xl bg-primary py-4 text-lg font-bold text-white disabled:opacity-60">
+          {busy ? "Ativando..." : "Ativar"}
+        </button>
+        <button type="button" onClick={() => setOpen(false)} className="mt-1 w-full py-3 font-semibold text-muted">Agora não</button>
+      </div>
+    </Sheet>
   );
 }
