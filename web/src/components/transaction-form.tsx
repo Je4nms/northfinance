@@ -1,6 +1,6 @@
 "use client";
 // Formulário de lançamento: o mesmo para Anotar (novo) e Editar (já existente)
-import { CalendarClock, CalendarDays, Check, ChevronDown, Repeat, Trash2 } from "lucide-react";
+import { CalendarClock, CalendarDays, Check, ChevronDown, ChevronUp, Repeat, Trash2 } from "lucide-react";
 import { useActionState, useEffect, useRef, useState } from "react";
 
 import { addBill, addTransaction, deleteBill, deleteRecurring, updateTransaction, type FormState } from "@/app/actions";
@@ -29,6 +29,8 @@ export function TransactionForm({ today, editId, initial, startKind, bills = [],
   favorites?: string[]; // as 5 categorias de gasto que aparecem primeiro
 }) {
   const [allCategories, setAllCategories] = useState(false);
+  // Ao recolher a lista, a categoria já escolhida continua aparecendo (e marcada)
+  const [kept, setKept] = useState<string | null>(null);
   const [kind, setKind] = useState<Kind>(initial?.kind ?? startKind ?? "expense");
   // Data: "Hoje" e "Ontem" num toque; "Outro dia" abre o calendário do celular
   const yesterday = new Date(Date.parse(today + "T00:00:00Z") - 86_400_000).toISOString().slice(0, 10);
@@ -45,6 +47,8 @@ export function TransactionForm({ today, editId, initial, startKind, bills = [],
     if (result.ok) {
       (document.getElementById("transaction-form") as HTMLFormElement)?.reset();
       setDateMode("today");
+      setKept(null);
+      setAllCategories(false);
       haptic();
       setCelebrate(true);
     }
@@ -63,7 +67,7 @@ export function TransactionForm({ today, editId, initial, startKind, bills = [],
   // Na ordem de uso (a mais usada primeiro); a já escolhida entra no fim, se não estiver entre elas
   const top = kind === "income" || !favorites
     ? all
-    : [...favorites, ...(preselected && !favorites.includes(preselected) ? [preselected] : [])];
+    : [...new Set([...favorites, ...(preselected ? [preselected] : []), ...(kept ? [kept] : [])])];
   const categories = allCategories ? all : top;
   const fixed = recurring.filter((r) => r.kind === kind);
   const kinds = editId ? KINDS.filter((k) => k.value !== "bill") : KINDS;
@@ -74,7 +78,7 @@ export function TransactionForm({ today, editId, initial, startKind, bills = [],
         <input type="hidden" name="kind" value={kind} />
         <div className={`grid rounded-2xl bg-card p-1 ${kinds.length === 3 ? "grid-cols-3" : "grid-cols-2"}`}>
           {kinds.map((k) => (
-            <button key={k.value} type="button" onClick={() => { setKind(k.value); setAllCategories(false); }} aria-pressed={kind === k.value}
+            <button key={k.value} type="button" onClick={() => { setKind(k.value); setAllCategories(false); setKept(null); }} aria-pressed={kind === k.value}
               className={`rounded-xl py-2.5 font-semibold ${kind === k.value ? "bg-bg shadow-sm" : "text-muted"}`}>
               {k.label}
             </button>
@@ -111,10 +115,21 @@ export function TransactionForm({ today, editId, initial, startKind, bills = [],
               </label>
             ))}
           </div>
-          {categories.length < all.length && (
-            <button type="button" onClick={() => setAllCategories(true)} className="mt-2 flex items-center gap-1 text-sm font-semibold text-primary">
-              Mais categorias <ChevronDown size={16} />
-            </button>
+          {top.length < all.length && (
+            allCategories ? (
+              <button type="button" className="mt-2 flex items-center gap-1 text-sm font-semibold text-primary"
+                onClick={(e) => {
+                  const checked = e.currentTarget.form?.querySelector<HTMLInputElement>("input[name=category]:checked")?.value;
+                  setKept(checked ?? null);
+                  setAllCategories(false);
+                }}>
+                Menos categorias <ChevronUp size={16} />
+              </button>
+            ) : (
+              <button type="button" onClick={() => setAllCategories(true)} className="mt-2 flex items-center gap-1 text-sm font-semibold text-primary">
+                Mais categorias <ChevronDown size={16} />
+              </button>
+            )
           )}
         </fieldset>
 

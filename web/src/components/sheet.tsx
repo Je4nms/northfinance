@@ -5,7 +5,13 @@ import { useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 
 /** Janela que sobe por baixo. Fecha tocando fora, no X ou com Esc. */
-export function Sheet({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
+export function Sheet({ title, onClose, children, header, tall }: {
+  title: string;
+  onClose: () => void;
+  children: React.ReactNode;
+  header?: React.ReactNode; // no lugar do título (ex.: avatar e botões do chat); o X continua
+  tall?: boolean; // quase a tela toda, com o conteúdo ocupando a altura (ex.: chat)
+}) {
   const panel = useRef<HTMLDivElement>(null);
   // Guarda a função de fechar mais recente sem refazer o efeito (assim o foco não "pula" a cada mudança)
   const close = useRef(onClose);
@@ -35,11 +41,13 @@ export function Sheet({ title, onClose, children }: { title: string; onClose: ()
         tabIndex={-1}
         style={{ outline: "none" }}
         onClick={(e) => e.stopPropagation()}
-        className="nf-sheet w-full max-w-md rounded-t-[28px] bg-bg px-5 pt-2.5 pb-[max(1.5rem,env(safe-area-inset-bottom))] outline-none md:rounded-[28px]"
+        className={`nf-sheet w-full max-w-md rounded-t-[28px] bg-bg px-5 pt-2.5 pb-[max(1.5rem,env(safe-area-inset-bottom))] outline-none md:rounded-[28px] ${
+          tall ? "flex h-[92dvh] flex-col md:h-[80dvh]" : ""
+        }`}
       >
         <div className="mx-auto mb-3 h-1.5 w-10 rounded-full bg-line md:hidden" aria-hidden />
-        <div className="mb-2 flex items-center justify-between">
-          <h2 className="text-lg font-bold">{title}</h2>
+        <div className="mb-2 flex items-center justify-between gap-2">
+          {header ?? <h2 className="text-lg font-bold">{title}</h2>}
           <button type="button" onClick={onClose} aria-label="Fechar" className="flex h-9 w-9 items-center justify-center rounded-full bg-card text-muted">
             <X size={18} />
           </button>
