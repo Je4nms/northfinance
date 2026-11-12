@@ -2,8 +2,12 @@
 // No banco elas continuam com o emoji na frente ("🛒 Mercado"); na tela mostramos
 // só o nome, com um ícone desenhado no lugar do emoji.
 
-export const EXPENSE_CATEGORIES = ["🛒 Mercado", "🎮 Lazer", "💡 Contas", "🍔 Comida fora", "⛽ Gasolina", "📦 Outros"];
-export const INCOME_CATEGORIES = ["💼 Salário", "💸 Pix recebido", "🧾 Extra", "📦 Outros"];
+// As novas seguem o mesmo formato (emoji + nome) para continuar compatível com a versão 1.
+export const EXPENSE_CATEGORIES = [
+  "🛒 Mercado", "🍔 Comida fora", "🚌 Transporte", "⛽ Gasolina", "🏠 Casa", "💡 Contas", "💊 Saúde",
+  "🎓 Educação", "🎮 Lazer", "📺 Assinaturas", "🛍️ Compras", "🐾 Pets", "📦 Outros",
+];
+export const INCOME_CATEGORIES = ["💼 Salário", "💸 Pix recebido", "🧾 Extra", "🏷️ Vendas", "📦 Outros"];
 
 // Cor fixa para cada categoria, pelo nome. "Outros" e desconhecidas ficam cinza.
 const COLORS: Record<string, string> = {
@@ -12,6 +16,14 @@ const COLORS: Record<string, string> = {
   Contas: "#10b981",
   "Comida fora": "#eab308",
   Gasolina: "#ec4899",
+  Transporte: "#06b6d4",
+  Casa: "#6366f1",
+  Saúde: "#f43f5e",
+  Educação: "#a855f7",
+  Assinaturas: "#84cc16",
+  Compras: "#d946ef",
+  Pets: "#b45309",
+  Vendas: "#0ea5e9",
   Salário: "#22c55e",
   "Pix recebido": "#14b8a6",
   Extra: "#8b5cf6",

@@ -1,7 +1,7 @@
 "use client";
 // Formulário de lançamento: o mesmo para Anotar (novo) e Editar (já existente)
-import { CalendarClock, Check, Repeat, Trash2 } from "lucide-react";
-import { useActionState, useEffect, useState } from "react";
+import { CalendarClock, CalendarDays, Check, Repeat, Trash2 } from "lucide-react";
+import { useActionState, useEffect, useRef, useState } from "react";
 
 import { addBill, addTransaction, deleteBill, updateTransaction, type FormState } from "@/app/actions";
 import { CategoryGlyph, CategoryIcon } from "@/components/category-icon";
@@ -27,6 +27,13 @@ export function TransactionForm({ today, editId, initial, startKind, bills = [] 
   today: string; editId?: number; initial?: Initial; startKind?: Kind; bills?: BillItem[];
 }) {
   const [kind, setKind] = useState<Kind>(initial?.kind ?? startKind ?? "expense");
+  // Data: "Hoje" e "Ontem" num toque; "Outro dia" abre o calendário do celular
+  const yesterday = new Date(Date.parse(today + "T00:00:00Z") - 86_400_000).toISOString().slice(0, 10);
+  const startDate = initial?.date ?? today;
+  const [dateMode, setDateMode] = useState<"today" | "yesterday" | "other">(
+    startDate === today ? "today" : startDate === yesterday ? "yesterday" : "other",
+  );
+  const dateInput = useRef<HTMLInputElement>(null);
   const [celebrate, setCelebrate] = useState(false);
   const isBill = kind === "bill";
   const save = editId ? updateTransaction.bind(null, editId) : isBill ? addBill : addTransaction;
@@ -34,6 +41,7 @@ export function TransactionForm({ today, editId, initial, startKind, bills = [] 
     const result = await save(prev, form);
     if (result.ok) {
       (document.getElementById("transaction-form") as HTMLFormElement)?.reset();
+      setDateMode("today");
       haptic();
       setCelebrate(true);
     }
@@ -115,11 +123,31 @@ export function TransactionForm({ today, editId, initial, startKind, bills = [] 
                 className="mt-1 w-full rounded-2xl bg-card px-4 py-3 outline-none" />
             </label>
 
-            <label className="block">
-              <span className="text-sm text-muted">Data</span>
-              <input name="date" type="date" defaultValue={initial?.date ?? today} max={today} required
-                className="mt-1 w-full rounded-2xl bg-card px-4 py-3 outline-none" />
-            </label>
+            <fieldset>
+              <legend className="mb-2 text-sm text-muted">Data</legend>
+              <div className="flex gap-2">
+                {([["today", "Hoje"], ["yesterday", "Ontem"], ["other", "Outro dia"]] as const).map(([mode, label]) => (
+                  <button key={mode} type="button" aria-pressed={dateMode === mode}
+                    onClick={() => {
+                      setDateMode(mode);
+                      if (mode === "other") setTimeout(() => dateInput.current?.showPicker?.(), 0);
+                    }}
+                    className={`flex items-center gap-1.5 rounded-full border px-4 py-2 transition-colors ${
+                      dateMode === mode ? "border-primary bg-primary/15 font-semibold" : "border-line"
+                    }`}>
+                    {mode === "other" && <CalendarDays size={16} />}
+                    {label}
+                  </button>
+                ))}
+              </div>
+              {dateMode === "other" ? (
+                <input ref={dateInput} name="date" type="date" defaultValue={startDate === today || startDate === yesterday ? "" : startDate}
+                  max={today} required aria-label="Escolha a data"
+                  className="mt-2 w-full rounded-2xl bg-card px-4 py-3 outline-none" />
+              ) : (
+                <input type="hidden" name="date" value={dateMode === "today" ? today : yesterday} />
+              )}
+            </fieldset>
           </>
         )}
 
