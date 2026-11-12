@@ -9,7 +9,8 @@ import { redirect } from "next/navigation";
 import { signIn, signOut } from "@/auth";
 import { EXPENSE_CATEGORIES, INCOME_CATEGORIES } from "@/lib/categories";
 import * as db from "@/lib/db";
-import { dayMonth, dueDateIn, firstDueDate, isoDate, parseBRL, shiftMonth, todayInSaoPaulo } from "@/lib/money";
+import { isGoalIcon } from "@/lib/goals";
+import { dayMonth, dueDateIn, firstDueDate, isoDate, parseBRL, shiftMonth, todayInSaoPaulo, toBRL } from "@/lib/money";
 import { currentMember, currentUser } from "@/lib/session";
 
 export async function enter() {
@@ -157,6 +158,85 @@ export async function savePayday(_: FormState, form: FormData): Promise<FormStat
   if (!(await db.setPaydayRule(member.email, kind, day))) return { error: "O dia do salário ainda não foi ativado no banco." };
   refresh();
   return { ok: "Dia do salário salvo" };
+}
+
+// --- Metas (a pessoa anota quanto guardou; o app não guarda nem movimenta dinheiro) ---
+
+function readGoal(form: FormData) {
+  const name = String(form.get("name") ?? "").trim().slice(0, 60);
+  const icon = String(form.get("icon") ?? "");
+  const targetCents = parseBRL(String(form.get("target") ?? ""));
+  const place = String(form.get("place") ?? "").trim().slice(0, 60) || null;
+  if (!name) return { error: "Dê um nome para a meta (ex.: Viagem)." };
+  if (!isGoalIcon(icon)) return { error: "Escolha um ícone." };
+  if (!targetCents || targetCents <= 0) return { error: "Quanto você quer juntar?" };
+  if (targetCents > MAX_CENTS) return { error: "Valor alto demais. O máximo é R$ 1.000.000,00." };
+  return { data: { name, icon, targetCents, place } };
+}
+
+export async function addGoal(_: FormState, form: FormData): Promise<FormState> {
+  const member = await currentMember();
+  const read = readGoal(form);
+  if (!read.data) return { error: read.error };
+  if (!(await db.addGoal(member.email, read.data))) return { error: "As metas ainda não foram ativadas no banco." };
+  refresh();
+  return { ok: "Meta criada", detail: `${read.data.name}: juntar ${toBRL(read.data.targetCents)}` };
+}
+
+export async function updateGoal(id: number, _: FormState, form: FormData): Promise<FormState> {
+  const member = await currentMember();
+  if (!Number.isSafeInteger(id)) return { error: "Meta não encontrada." };
+  const read = readGoal(form);
+  if (!read.data) return { error: read.error };
+  await db.updateGoal(member.email, id, read.data);
+  refresh();
+  return { ok: "Meta atualizada" };
+}
+
+export async function deleteGoal(id: number) {
+  const member = await currentMember();
+  if (!Number.isSafeInteger(id)) return;
+  await db.deleteGoal(member.email, id);
+  refresh();
+}
+
+/** "Anotar que guardei" (direction = "in") ou "Anotar que tirei" (direction = "out"). */
+export async function addGoalEntry(_: FormState, form: FormData): Promise<FormState> {
+  const member = await currentMember();
+  const goalId = Number(form.get("goal"));
+  const out = form.get("direction") === "out";
+  const amountCents = parseBRL(String(form.get("amount") ?? ""));
+  const date = String(form.get("date") ?? "");
+  const day = /^\d{4}-\d{2}-\d{2}$/.test(date) ? new Date(date + "T00:00:00Z") : null;
+
+  if (!amountCents || amountCents <= 0) return { error: "Coloque o valor." };
+  if (amountCents > MAX_CENTS) return { error: "Valor alto demais. O máximo é R$ 1.000.000,00." };
+  if (!day || isNaN(day.getTime()) || day > todayInSaoPaulo() || day.getUTCFullYear() < 2000) {
+    return { error: "Escolha uma data válida (não pode ser no futuro)." };
+  }
+  const goal = Number.isSafeInteger(goalId) ? await db.goalSaved(member.email, goalId) : null;
+  if (!goal) return { error: "Escolha uma meta." };
+  if (out && amountCents > goal.savedCents) {
+    return { error: `Essa meta tem só ${toBRL(goal.savedCents)} anotados.` };
+  }
+
+  await db.addGoalEntry(member.email, goalId, out ? -amountCents : amountCents, date);
+  refresh();
+  const after = goal.savedCents + (out ? -amountCents : amountCents);
+  if (!out && goal.savedCents < goal.targetCents && after >= goal.targetCents) {
+    return { ok: "Meta concluída!", detail: `Você juntou ${toBRL(after)} para ${goal.name}` };
+  }
+  return {
+    ok: "Anotado",
+    detail: out ? `${toBRL(amountCents)} saiu de ${goal.name}` : `${toBRL(amountCents)} em ${goal.name}`,
+  };
+}
+
+export async function deleteGoalEntry(id: number) {
+  const member = await currentMember();
+  if (!Number.isSafeInteger(id)) return;
+  await db.deleteGoalEntry(member.email, id);
+  refresh();
 }
 
 export async function deleteTransaction(id: number) {

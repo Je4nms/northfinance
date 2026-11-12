@@ -63,7 +63,11 @@ async function Statement({ searchParams }: { searchParams: Promise<Params> }) {
 
   let transactions = await db.listTransactions(member.email, start, end);
   if (kind) transactions = transactions.filter((t) => t.kind === kind);
-  const total = transactions.reduce((sum, t) => sum + (t.kind === "income" ? t.amountCents : -t.amountCents), 0);
+  // O dinheiro anotado nas Metas aparece em "Todos" (não é ganho nem gasto) e sai do saldo do período
+  const saved = kind ? [] : await db.listGoalEntries(member.email, start, end);
+  const total =
+    transactions.reduce((sum, t) => sum + (t.kind === "income" ? t.amountCents : -t.amountCents), 0) -
+    saved.reduce((sum, e) => sum + e.amountCents, 0);
   const isCurrentMonth = month?.getTime() === shiftMonth(today, 0).getTime();
 
   return (
@@ -105,12 +109,12 @@ async function Statement({ searchParams }: { searchParams: Promise<Params> }) {
         <Link href={link(params, { tipo: "expense" })} className={pill(kind === "expense")}>Gastos</Link>
       </div>
 
-      {transactions.length > 0 ? (
+      {transactions.length + saved.length > 0 ? (
         <>
           <p className="text-sm text-muted">
-            {transactions.length} lançamento(s) · saldo do período: <b className="text-fg">{fmt(total)}</b>
+            {transactions.length + saved.length} lançamento(s) · saldo do período: <b className="text-fg">{fmt(total)}</b>
           </p>
-          <TransactionList transactions={transactions} today={today} fmt={fmt} />
+          <TransactionList transactions={transactions} saved={saved} today={today} fmt={fmt} />
         </>
       ) : (
         <p className="rounded-3xl bg-card p-4 text-muted">Nenhum lançamento nesse período.</p>

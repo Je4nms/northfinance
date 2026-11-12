@@ -33,6 +33,7 @@ export function Sheet({ title, onClose, children }: { title: string; onClose: ()
         aria-modal="true"
         aria-label={title}
         tabIndex={-1}
+        style={{ outline: "none" }}
         onClick={(e) => e.stopPropagation()}
         className="nf-sheet w-full max-w-md rounded-t-[28px] bg-bg px-5 pt-2.5 pb-[max(1.5rem,env(safe-area-inset-bottom))] outline-none md:rounded-[28px]"
       >

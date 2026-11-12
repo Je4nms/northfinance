@@ -1,4 +1,4 @@
-// Início: saudação, saldo do mês, meta, para onde foi o dinheiro e últimos lançamentos
+// Início: saudação, saldo do mês, limite do mês, para onde foi o dinheiro e últimos lançamentos
 import { ChevronLeft, ChevronRight, Eye, EyeOff, Target, TrendingDown, TrendingUp } from "lucide-react";
 import { cookies } from "next/headers";
 import Link from "next/link";
@@ -50,7 +50,7 @@ async function Home({ searchParams }: { searchParams: PageProps<"/">["searchPara
   ));
 
 
-  const [totals, byCategory, recent, goal, askEnjoying, byDay, previousSpent, bills, savings] = await Promise.all([
+  const [totals, byCategory, recent, goal, askEnjoying, byDay, previousSpent, bills, savings, saved] = await Promise.all([
     db.monthTotals(member.email, start, end),
     db.expensesByCategory(member.email, start, end),
     db.listTransactions(member.email, start, end),
@@ -60,11 +60,13 @@ async function Home({ searchParams }: { searchParams: PageProps<"/">["searchPara
     db.expensesBetween(member.email, previous, previousEnd),
     isCurrentMonth ? db.listBills(member.email) : Promise.resolve([]),
     isCurrentMonth ? savingsFor(member.email, today) : Promise.resolve(null),
+    db.savedBetween(member.email, start, end),
   ]);
   // Embaixo do saldo aparece no máximo UMA linha: conta vencendo tem prioridade sobre "Sobrou dinheiro?"
   const sheetBills = bills.map((b) => toSheetBill(b, today));
   const billDue = sheetBills.some((b) => b.tone !== "later");
-  const balance = totals.income - totals.expense;
+  // O que foi guardado nas Metas não é gasto, mas também não está mais livre
+  const balance = totals.income - totals.expense - saved;
 
   return (
     <div className="nf-fade-in space-y-5">
@@ -179,14 +181,14 @@ async function Home({ searchParams }: { searchParams: PageProps<"/">["searchPara
 }
 
 /**
- * Meta do mês: anel de progresso (verde até 80%, laranja até 100%, vermelho quando passa),
+ * Limite do mês: anel de progresso (verde até 80%, laranja até 100%, vermelho quando passa),
  * quanto ainda dá para gastar, quanto isso dá por dia e a previsão para o fim do mês.
  */
 function Goal({ spent, goal, today }: { spent: number; goal: number | null; today: Date }) {
   const editor = (
     <details className="group">
       <summary className="cursor-pointer list-none text-sm font-semibold text-primary">
-        {goal ? "Editar meta" : "Definir"}
+        {goal ? "Editar limite" : "Definir"}
       </summary>
       <form action={saveGoal} className="mt-3 flex gap-2">
         <input
@@ -198,7 +200,7 @@ function Goal({ spent, goal, today }: { spent: number; goal: number | null; toda
         />
         <button className="rounded-xl bg-primary px-4 py-2 font-semibold text-white">Salvar</button>
       </form>
-      <p className="mt-1 text-sm text-muted">Deixe em branco para tirar a meta.</p>
+      <p className="mt-1 text-sm text-muted">Deixe em branco para tirar o limite.</p>
     </details>
   );
 
@@ -207,7 +209,7 @@ function Goal({ spent, goal, today }: { spent: number; goal: number | null; toda
       <div className="flex items-start gap-3 rounded-3xl border border-dashed border-line p-4">
         <span className="flex h-11 w-11 flex-none items-center justify-center rounded-full bg-primary/15 text-primary"><Target size={20} /></span>
         <div className="flex-1">
-          <p className="font-bold">Defina uma meta para o mês</p>
+          <p className="font-bold">Defina um limite para o mês</p>
           <p className="mb-2 text-sm text-muted">Quanto você quer gastar, no máximo? O app te avisa quando estiver chegando perto.</p>
           {editor}
         </div>
@@ -240,7 +242,7 @@ function Goal({ spent, goal, today }: { spent: number; goal: number | null; toda
           <span className="absolute inset-0 flex items-center justify-center text-lg font-extrabold">{Math.round(share * 100)}%</span>
         </div>
         <div className="min-w-0 flex-1">
-          <p className="text-sm text-muted">Meta do mês · {toBRL(goal)}</p>
+          <p className="text-sm text-muted">Limite do mês · {toBRL(goal)}</p>
           {left >= 0 ? (
             <>
               <p className="text-2xl leading-tight font-extrabold">{toBRL(left)}</p>
@@ -249,7 +251,7 @@ function Goal({ spent, goal, today }: { spent: number; goal: number | null; toda
           ) : (
             <>
               <p className="text-2xl leading-tight font-extrabold text-expense">{toBRL(-left)}</p>
-              <p className="text-sm text-muted">acima da meta</p>
+              <p className="text-sm text-muted">acima do limite</p>
             </>
           )}
         </div>

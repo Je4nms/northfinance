@@ -9,11 +9,12 @@ import { createPortal } from "react-dom";
 const SEEN = "nf-tour-visto";
 
 const STEPS = [
-  { target: "saldo", title: "Sobrou no mês", text: "Tudo o que entrou menos tudo o que saiu. É o número mais importante do app." },
+  { target: "saldo", title: "Sobrou no mês", text: "Tudo o que entrou menos o que você gastou e guardou. É o número mais importante do app." },
   { target: "olho", title: "Esconder valores", text: "Vai abrir o app perto de alguém? Toque no olho e os valores ficam escondidos." },
   { target: "anotar", title: "Anotar", text: "Anote um gasto, um ganho ou uma conta que vence todo mês. Leva poucos segundos." },
   { target: "categorias", title: "Para onde foi o dinheiro", text: "Veja em quais categorias você mais gastou no mês." },
   { target: "extrato", title: "Extrato", text: "Todos os lançamentos, por mês ou pelas datas que quiser. Toque em um para editar." },
+  { target: "metas", title: "Metas", text: "Crie metas para os seus sonhos e anote o que for guardando. O dinheiro fica no seu banco: aqui você acompanha." },
   { target: "menu", title: "Menu", text: "Convide alguém, mande sugestões e veja este tour de novo quando quiser." },
 ];
 
