@@ -528,3 +528,54 @@ export async function savedBetween(owner: string, start: Date, end: Date): Promi
   `;
   return rows[0].total;
 }
+
+// --- Assistente de IA ---
+// A coluna ai_consent_at e a tabela ai_usage são criadas por web/sql/assistente.sql.
+
+export async function aiReady(): Promise<boolean> {
+  const [{ ok }] = await sql`SELECT to_regclass('ai_usage') IS NOT NULL AS ok`;
+  return ok;
+}
+
+export async function hasAiConsent(email: string): Promise<boolean> {
+  if (!(await aiReady())) return false;
+  const rows = await sql`SELECT ai_consent_at IS NOT NULL AS ok FROM members WHERE email = ${email}`;
+  return Boolean(rows[0]?.ok);
+}
+
+export async function giveAiConsent(email: string): Promise<void> {
+  await sql`UPDATE members SET ai_consent_at = now() WHERE email = ${email} AND ai_consent_at IS NULL`;
+}
+
+/** Perguntas feitas hoje (dia de São Paulo). */
+export async function aiQuestionsToday(email: string): Promise<number> {
+  if (!(await aiReady())) return 0;
+  const rows = await sql`
+    SELECT COUNT(*)::int AS n FROM ai_usage
+    WHERE owner = ${email} AND (asked_at AT TIME ZONE 'America/Sao_Paulo')::date = (now() AT TIME ZONE 'America/Sao_Paulo')::date
+  `;
+  return rows[0].n;
+}
+
+export async function recordAiQuestion(email: string): Promise<void> {
+  await sql`INSERT INTO ai_usage (owner) VALUES (${email})`;
+}
+
+/** Busca para a IA: lançamentos de um período, por texto da descrição, categoria e tipo. No máximo `limit`. */
+export async function searchTransactions(
+  owner: string,
+  f: { start: Date; end: Date; text?: string; category?: string; kind?: Kind; limit: number },
+): Promise<{ rows: Transaction[]; total: number; sumCents: number }> {
+  // Função (e não constante): um pedaço novo de SQL para cada uma das duas consultas
+  const where = () => sql`
+    owner = ${owner} AND occurred_on >= ${f.start} AND occurred_on < ${f.end}
+    ${f.text ? sql`AND description ILIKE ${"%" + f.text.replace(/[%_\\]/g, "\\$&") + "%"}` : sql``}
+    ${f.category ? sql`AND category = ${f.category}` : sql``}
+    ${f.kind ? sql`AND kind = ${f.kind}` : sql``}
+  `;
+  const [rows, summary] = await Promise.all([
+    sql`SELECT id, kind, amount_cents, category, description, occurred_on FROM transactions WHERE ${where()} ORDER BY occurred_on DESC, id DESC LIMIT ${f.limit}`,
+    sql`SELECT COUNT(*)::int AS n, COALESCE(SUM(amount_cents), 0)::bigint AS s FROM transactions WHERE ${where()}`,
+  ]);
+  return { rows: rows.map(toTransaction), total: summary[0].n, sumCents: Number(summary[0].s) };
+}
