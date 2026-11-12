@@ -8,7 +8,8 @@ import { deleteTransaction } from "@/app/actions";
 import { LoadingLogo } from "@/components/loading-logo";
 import { TransactionForm } from "@/components/transaction-form";
 import * as db from "@/lib/db";
-import { isoDate, todayInSaoPaulo } from "@/lib/money";
+import { favoriteExpenseCategories } from "@/lib/categories";
+import { isoDate, shiftMonth, todayInSaoPaulo } from "@/lib/money";
 import { currentMember } from "@/lib/session";
 
 export default function Page({ params }: PageProps<"/lancamento/[id]">) {
@@ -30,12 +31,15 @@ async function Edit({ params }: { params: PageProps<"/lancamento/[id]">["params"
   const id = Number((await params).id);
   const t = Number.isSafeInteger(id) ? await db.getTransaction(member.email, id) : null;
   if (!t) notFound();
+  const today = todayInSaoPaulo();
+  const mostUsed = await db.topExpenseCategories(member.email, shiftMonth(today, -3));
 
   return (
     <div className="space-y-4">
       <TransactionForm
-        today={isoDate(todayInSaoPaulo())}
+        today={isoDate(today)}
         editId={t.id}
+        favorites={favoriteExpenseCategories(mostUsed)}
         initial={{
           kind: t.kind,
           amount: (t.amountCents / 100).toFixed(2).replace(".", ","),

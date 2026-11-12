@@ -419,3 +419,16 @@ export async function averageMonthlyExpense(owner: string, start: Date, end: Dat
   const months = rows[0].months as number;
   return months > 0 ? Math.round(Number(rows[0].total) / months) : null;
 }
+
+// --- Categorias que a pessoa mais usa (para o Anotar mostrar só as principais) ---
+
+export async function topExpenseCategories(owner: string, since: Date): Promise<string[]> {
+  const rows = await sql`
+    SELECT category FROM transactions
+    WHERE owner = ${owner} AND kind = 'expense' AND occurred_on >= ${since}
+    GROUP BY category
+    ORDER BY COUNT(*) DESC, MAX(occurred_on) DESC
+    LIMIT 5
+  `;
+  return rows.map((r) => r.category as string);
+}
