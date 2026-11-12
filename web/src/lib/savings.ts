@@ -32,13 +32,14 @@ export async function savingsFor(email: string, today: Date): Promise<Savings> {
     const inWindow = today >= opens && daysBetween(payday, today) <= 7;
     visible = inWindow && !(await db.salaryRecordedSince(email, opens));
     // O ciclo começa um pouco antes do salário anterior (às vezes ele é anotado um ou dois dias antes)
-    const totals = await db.monthTotals(email, new Date(previous.getTime() - 3 * DAY), tomorrow);
-    amountCents = totals.income - totals.expense;
+    const cycleStart = new Date(previous.getTime() - 3 * DAY);
+    const [totals, saved] = await Promise.all([db.monthTotals(email, cycleStart, tomorrow), db.savedBetween(email, cycleStart, tomorrow)]);
+    amountCents = totals.income - totals.expense - saved;
   } else {
     const lastDay = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth() + 1, 0)).getUTCDate();
     visible = today.getUTCDate() > lastDay - 5;
-    const totals = await db.monthTotals(email, shiftMonth(today, 0), tomorrow);
-    amountCents = totals.income - totals.expense;
+    const [totals, saved] = await Promise.all([db.monthTotals(email, shiftMonth(today, 0), tomorrow), db.savedBetween(email, shiftMonth(today, 0), tomorrow)]);
+    amountCents = totals.income - totals.expense - saved;
   }
 
   return {

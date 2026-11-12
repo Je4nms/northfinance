@@ -432,3 +432,99 @@ export async function topExpenseCategories(owner: string, since: Date): Promise<
   `;
   return rows.map((r) => r.category as string);
 }
+
+// --- Metas (a pessoa anota quanto guardou; o app não guarda nem movimenta dinheiro) ---
+// As tabelas goals e goal_entries são criadas por web/sql/metas.sql.
+
+export type Goal = {
+  id: number;
+  name: string;
+  icon: string;
+  targetCents: number;
+  place: string | null;
+  savedCents: number;
+};
+
+export type GoalEntry = { id: number; goalId: number; goalName: string; goalIcon: string; amountCents: number; occurredOn: Date };
+
+export async function goalsReady(): Promise<boolean> {
+  const [{ ok }] = await sql`SELECT to_regclass('goal_entries') IS NOT NULL AS ok`;
+  return ok;
+}
+
+export async function listGoals(owner: string): Promise<Goal[]> {
+  if (!(await goalsReady())) return [];
+  const rows = await sql`
+    SELECT g.id, g.name, g.icon, g.target_cents, g.place,
+           COALESCE((SELECT SUM(e.amount_cents) FROM goal_entries e WHERE e.goal_id = g.id), 0)::int AS saved
+    FROM goals g WHERE g.owner = ${owner}
+    ORDER BY g.created_at, g.id
+  `;
+  return rows.map((r) => ({ id: r.id, name: r.name, icon: r.icon, targetCents: r.target_cents, place: r.place, savedCents: r.saved }));
+}
+
+export async function addGoal(owner: string, g: { name: string; icon: string; targetCents: number; place: string | null }): Promise<boolean> {
+  if (!(await goalsReady())) return false;
+  await sql`INSERT INTO goals (owner, name, icon, target_cents, place) VALUES (${owner}, ${g.name}, ${g.icon}, ${g.targetCents}, ${g.place})`;
+  return true;
+}
+
+export async function updateGoal(owner: string, id: number, g: { name: string; icon: string; targetCents: number; place: string | null }): Promise<void> {
+  await sql`
+    UPDATE goals SET name = ${g.name}, icon = ${g.icon}, target_cents = ${g.targetCents}, place = ${g.place}
+    WHERE id = ${id} AND owner = ${owner}
+  `;
+}
+
+/** Apaga a meta e o histórico dela (ON DELETE CASCADE). */
+export async function deleteGoal(owner: string, id: number): Promise<void> {
+  await sql`DELETE FROM goals WHERE id = ${id} AND owner = ${owner}`;
+}
+
+/** Quanto já foi guardado numa meta (só se ela for da pessoa). */
+export async function goalSaved(owner: string, id: number): Promise<{ name: string; targetCents: number; savedCents: number } | null> {
+  const rows = await sql`
+    SELECT g.name, g.target_cents, COALESCE(SUM(e.amount_cents), 0)::int AS saved
+    FROM goals g LEFT JOIN goal_entries e ON e.goal_id = g.id
+    WHERE g.id = ${id} AND g.owner = ${owner}
+    GROUP BY g.id
+  `;
+  return rows[0] ? { name: rows[0].name, targetCents: rows[0].target_cents, savedCents: rows[0].saved } : null;
+}
+
+export async function addGoalEntry(owner: string, goalId: number, amountCents: number, occurredOn: string): Promise<void> {
+  await sql`
+    INSERT INTO goal_entries (owner, goal_id, amount_cents, occurred_on)
+    SELECT ${owner}, id, ${amountCents}, ${occurredOn} FROM goals WHERE id = ${goalId} AND owner = ${owner}
+  `;
+}
+
+export async function deleteGoalEntry(owner: string, id: number): Promise<void> {
+  await sql`DELETE FROM goal_entries WHERE id = ${id} AND owner = ${owner}`;
+}
+
+/** Anotações de guardar/tirar entre `start` (incluído) e `end` (não incluído); `goalId` filtra uma meta. */
+export async function listGoalEntries(owner: string, start: Date, end: Date, goalId?: number): Promise<GoalEntry[]> {
+  if (!(await goalsReady())) return [];
+  const rows = await sql`
+    SELECT e.id, e.goal_id, g.name, g.icon, e.amount_cents, e.occurred_on::text AS day
+    FROM goal_entries e JOIN goals g ON g.id = e.goal_id
+    WHERE e.owner = ${owner} AND e.occurred_on >= ${start} AND e.occurred_on < ${end}
+      ${goalId ? sql`AND e.goal_id = ${goalId}` : sql``}
+    ORDER BY e.occurred_on DESC, e.id DESC
+  `;
+  return rows.map((r) => ({
+    id: r.id, goalId: r.goal_id, goalName: r.name, goalIcon: r.icon, amountCents: r.amount_cents,
+    occurredOn: new Date(r.day + "T00:00:00Z"),
+  }));
+}
+
+/** Quanto foi guardado (menos o que foi tirado) entre `start` e `end`. Entra no "Sobrou no mês". */
+export async function savedBetween(owner: string, start: Date, end: Date): Promise<number> {
+  if (!(await goalsReady())) return 0;
+  const rows = await sql`
+    SELECT COALESCE(SUM(amount_cents), 0)::int AS total FROM goal_entries
+    WHERE owner = ${owner} AND occurred_on >= ${start} AND occurred_on < ${end}
+  `;
+  return rows[0].total;
+}

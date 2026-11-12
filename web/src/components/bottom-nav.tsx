@@ -1,5 +1,6 @@
 "use client";
 // Barra de navegação fixa embaixo, como num app. No computador ela "flutua" no meio.
+import { PiggyBank } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -7,6 +8,7 @@ const TABS = [
   { href: "/", label: "Início", icon: "M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z" },
   { href: "/anotar", label: "Anotar", icon: "M12 5v14M5 12h14" },
   { href: "/extrato", label: "Extrato", icon: "M6 3h12v18l-3-2-3 2-3-2-3 2zM9 8h6M9 12h6" },
+  { href: "/metas", label: "Metas", icon: null },
   { href: "/menu", label: "Menu", icon: "M4 6h16M4 12h16M4 18h16" },
 ];
 
@@ -26,10 +28,14 @@ export function BottomNav() {
                   active ? "text-primary" : "text-muted"
                 }`}
               >
-                <span className={`flex h-8 w-14 items-center justify-center rounded-full ${active ? "bg-primary/15" : ""}`}>
-                  <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-                    <path d={tab.icon} />
-                  </svg>
+                <span className={`flex h-8 w-12 items-center justify-center rounded-full ${active ? "bg-primary/15" : ""}`}>
+                  {tab.icon ? (
+                    <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                      <path d={tab.icon} />
+                    </svg>
+                  ) : (
+                    <PiggyBank size={20} strokeWidth={2} />
+                  )}
                 </span>
                 {tab.label}
               </Link>
