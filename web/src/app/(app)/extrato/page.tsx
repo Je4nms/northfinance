@@ -6,11 +6,13 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { Suspense } from "react";
 
+import { Assistant } from "@/components/assistant";
 import { Brand } from "@/components/brand";
 import { LoadingLogo } from "@/components/loading-logo";
 import { TransactionList } from "@/components/transaction-list";
 import * as db from "@/lib/db";
 import { isoDate, monthName, monthParam, monthRange, parseMonth, shiftMonth, todayInSaoPaulo, toBRL } from "@/lib/money";
+import { AI_DAILY_LIMIT } from "@/lib/assistant";
 import { currentMember } from "@/lib/session";
 
 type Params = Record<string, string | string[] | undefined>;
@@ -69,9 +71,14 @@ async function Statement({ searchParams }: { searchParams: Promise<Params> }) {
     transactions.reduce((sum, t) => sum + (t.kind === "income" ? t.amountCents : -t.amountCents), 0) -
     saved.reduce((sum, e) => sum + e.amountCents, 0);
   const isCurrentMonth = month?.getTime() === shiftMonth(today, 0).getTime();
+  // O balão da IA só aparece quando a chave da IA está configurada e o SQL foi rodado
+  const ai = process.env.ANTHROPIC_API_KEY && (await db.aiReady())
+    ? { consented: await db.hasAiConsent(member.email), used: await db.aiQuestionsToday(member.email) }
+    : null;
 
   return (
     <div className="space-y-4">
+      {ai && <Assistant consented={ai.consented} used={ai.used} limit={AI_DAILY_LIMIT} />}
       <div className="grid grid-cols-2 rounded-2xl bg-card p-1 md:max-w-sm">
         <Link href={link({ tipo: params.tipo }, {})} className={`rounded-xl py-2 text-center font-semibold ${!byDates ? "bg-bg shadow-sm" : "text-muted"}`}>Por mês</Link>
         <Link href={link({ tipo: params.tipo }, { periodo: "datas" })} className={`rounded-xl py-2 text-center font-semibold ${byDates ? "bg-bg shadow-sm" : "text-muted"}`}>Escolher datas</Link>

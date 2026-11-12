@@ -239,6 +239,12 @@ export async function deleteGoalEntry(id: number) {
   refresh();
 }
 
+/** A pessoa aceitou que os lançamentos sejam enviados à IA para responder (LGPD). */
+export async function acceptAiConsent() {
+  const member = await currentMember();
+  await db.giveAiConsent(member.email);
+}
+
 export async function deleteTransaction(id: number) {
   const member = await currentMember();
   if (!Number.isSafeInteger(id)) return;
