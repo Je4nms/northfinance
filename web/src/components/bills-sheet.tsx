@@ -1,13 +1,13 @@
 "use client";
 // Contas a vencer no Início: uma linha discreta que abre uma janela por baixo com as contas,
 // a confirmação do pagamento (valor grande, que dá para ajustar) e o "✓" no final.
-import { CalendarDays, Check, ChevronRight, Plus, Tag, X } from "lucide-react";
+import { CalendarDays, Check, ChevronRight, Plus, Tag } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useRef, useState, useTransition } from "react";
-import { createPortal } from "react-dom";
+import { useState, useTransition } from "react";
 
 import { payBill, type PayState } from "@/app/actions";
 import { CategoryIcon } from "@/components/category-icon";
+import { Sheet } from "@/components/sheet";
 import { categoryName } from "@/lib/categories";
 import { haptic } from "@/lib/haptic";
 import { toBRL } from "@/lib/money";
@@ -164,46 +164,5 @@ function Confirm({ bill, todayLabel, onBack, onDone }: {
         Agora não
       </button>
     </form>
-  );
-}
-
-/** Janela que sobe por baixo. Fecha tocando fora, no X ou com Esc. */
-function Sheet({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
-  const panel = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
-    const previous = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    document.addEventListener("keydown", onKey);
-    panel.current?.focus();
-    return () => {
-      document.body.style.overflow = previous;
-      document.removeEventListener("keydown", onKey);
-    };
-  }, [onClose]);
-
-  return createPortal(
-    <div className="nf-backdrop fixed inset-0 z-[60] flex items-end justify-center bg-black/55 md:items-center" onClick={onClose}>
-      <div
-        ref={panel}
-        role="dialog"
-        aria-modal="true"
-        aria-label={title}
-        tabIndex={-1}
-        onClick={(e) => e.stopPropagation()}
-        className="nf-sheet w-full max-w-md rounded-t-[28px] bg-bg px-5 pt-2.5 pb-[max(1.5rem,env(safe-area-inset-bottom))] outline-none md:rounded-[28px]"
-      >
-        <div className="mx-auto mb-3 h-1.5 w-10 rounded-full bg-line md:hidden" aria-hidden />
-        <div className="mb-2 flex items-center justify-between">
-          <h2 className="text-lg font-bold">{title}</h2>
-          <button type="button" onClick={onClose} aria-label="Fechar" className="flex h-9 w-9 items-center justify-center rounded-full bg-card text-muted">
-            <X size={18} />
-          </button>
-        </div>
-        {children}
-      </div>
-    </div>,
-    document.body,
   );
 }

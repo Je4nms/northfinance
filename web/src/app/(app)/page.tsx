@@ -7,6 +7,7 @@ import { Suspense } from "react";
 import { answerEnjoying, saveGoal, toggleValues } from "@/app/actions";
 import { AnimatedNumber } from "@/components/animated-number";
 import { BillsSheet, type SheetBill } from "@/components/bills-sheet";
+import { SavingsSheet } from "@/components/savings-sheet";
 import { CategoryIcon } from "@/components/category-icon";
 import { DailyChart } from "@/components/daily-chart";
 import { LoadingLogo } from "@/components/loading-logo";
@@ -15,6 +16,7 @@ import { TransactionList } from "@/components/transaction-list";
 import { categoryColor, categoryName } from "@/lib/categories";
 import * as db from "@/lib/db";
 import { dueLabel, greeting, isoDate, monthName, monthParam, monthRange, parseMonth, shiftMonth, todayInSaoPaulo, toBRL } from "@/lib/money";
+import { savingsFor } from "@/lib/savings";
 import { currentMember } from "@/lib/session";
 
 export default function Page({ searchParams }: PageProps<"/">) {
@@ -48,7 +50,7 @@ async function Home({ searchParams }: { searchParams: PageProps<"/">["searchPara
   ));
 
 
-  const [totals, byCategory, recent, goal, askEnjoying, byDay, previousSpent, bills] = await Promise.all([
+  const [totals, byCategory, recent, goal, askEnjoying, byDay, previousSpent, bills, savings] = await Promise.all([
     db.monthTotals(member.email, start, end),
     db.expensesByCategory(member.email, start, end),
     db.listTransactions(member.email, start, end),
@@ -57,7 +59,11 @@ async function Home({ searchParams }: { searchParams: PageProps<"/">["searchPara
     db.expensesByDay(member.email, start, end),
     db.expensesBetween(member.email, previous, previousEnd),
     isCurrentMonth ? db.listBills(member.email) : Promise.resolve([]),
+    isCurrentMonth ? savingsFor(member.email, today) : Promise.resolve(null),
   ]);
+  // Embaixo do saldo aparece no máximo UMA linha: conta vencendo tem prioridade sobre "Sobrou dinheiro?"
+  const sheetBills = bills.map((b) => toSheetBill(b, today));
+  const billDue = sheetBills.some((b) => b.tone !== "later");
   const balance = totals.income - totals.expense;
 
   return (
@@ -113,7 +119,8 @@ async function Home({ searchParams }: { searchParams: PageProps<"/">["searchPara
             <p className="text-5xl leading-tight font-extrabold tracking-tight tabular-nums"><AnimatedNumber cents={balance} hidden={hide} /></p>
           </section>
 
-          {bills.length > 0 && <BillsSheet bills={bills.map((b) => toSheetBill(b, today))} hide={hide} todayLabel={isoDate(today).slice(8, 10) + "/" + isoDate(today).slice(5, 7)} />}
+          {bills.length > 0 && <BillsSheet bills={sheetBills} hide={hide} todayLabel={isoDate(today).slice(8, 10) + "/" + isoDate(today).slice(5, 7)} />}
+          {savings && <SavingsSheet savings={{ ...savings, visible: savings.visible && !billDue }} hide={hide} />}
 
           <div className="grid grid-cols-2 gap-2.5">
             <div className="rounded-3xl bg-card p-4">

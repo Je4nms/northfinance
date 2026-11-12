@@ -147,6 +147,18 @@ export async function payBill(id: number, _: PayState, form: FormData): Promise<
   return { done: { name: bill.name, amountCents, nextDue: dayMonth(nextDue) } };
 }
 
+/** Salva quando a pessoa recebe o salário: dia fixo, 5º dia útil ou último dia útil. */
+export async function savePayday(_: FormState, form: FormData): Promise<FormState> {
+  const member = await currentMember();
+  const kind = String(form.get("kind") ?? "");
+  if (!["fixed", "fifth_business", "last_business"].includes(kind)) return { error: "Escolha quando você recebe." };
+  const day = kind === "fixed" ? Number(form.get("day")) : null;
+  if (kind === "fixed" && (!Number.isInteger(day) || day! < 1 || day! > 31)) return { error: "Escolha um dia de 1 a 31." };
+  if (!(await db.setPaydayRule(member.email, kind, day))) return { error: "O dia do salário ainda não foi ativado no banco." };
+  refresh();
+  return { ok: "Dia do salário salvo" };
+}
+
 export async function deleteTransaction(id: number) {
   const member = await currentMember();
   if (!Number.isSafeInteger(id)) return;
