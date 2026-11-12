@@ -1,11 +1,14 @@
 // Menu no estilo "perfil": foto, nome e as opções em blocos
-import { ChevronRight, Compass, Info, LogOut, MessageSquare, UserPlus } from "lucide-react";
+import { Bell, ChevronRight, Compass, Info, LogOut, MessageSquare, UserPlus } from "lucide-react";
 import Link from "next/link";
 import { Suspense } from "react";
 
 import { leave } from "@/app/actions";
 import { LoadingLogo } from "@/components/loading-logo";
 import { CopyButton, FeedbackForm } from "@/components/menu-client";
+import { NotificationsPanel } from "@/components/notifications";
+import * as db from "@/lib/db";
+import { pushConfigured } from "@/lib/push";
 import { currentMember } from "@/lib/session";
 
 const APP_URL = process.env.APP_URL ?? "https://northfinancebr.streamlit.app/?embed=true";
@@ -25,6 +28,8 @@ async function Menu({ searchParams }: { searchParams: PageProps<"/menu">["search
     "Oi! Estou usando o NorthFinance para organizar minhas finanças. " +
     `Entra com a sua conta Google: ${APP_URL} Código de convite: ${process.env.INVITE_CODE ?? ""}`;
   const card = "space-y-3 rounded-3xl bg-card p-4";
+  // A seção só aparece com as chaves configuradas na Vercel e o SQL rodado
+  const notifications = pushConfigured() && (await db.notificationsReady()) ? await db.getNotificationSettings(member.email) : null;
 
   return (
     <div className="nf-fade-in mx-auto max-w-[520px] space-y-4">
@@ -55,6 +60,13 @@ async function Menu({ searchParams }: { searchParams: PageProps<"/menu">["search
           </a>
         </div>
       </section>
+
+      {notifications && (
+        <section id="notificacoes" className={card}>
+          <h2 className="flex items-center gap-2 font-bold"><Bell size={18} className="text-primary" /> Notificações</h2>
+          <NotificationsPanel publicKey={process.env.VAPID_PUBLIC_KEY!} initial={notifications} />
+        </section>
+      )}
 
       <section id="sugestao" className={card}>
         <h2 className="flex items-center gap-2 font-bold"><MessageSquare size={18} className="text-primary" /> Enviar sugestão</h2>
