@@ -2,6 +2,7 @@
 import { Suspense } from "react";
 
 import { BottomNav } from "@/components/bottom-nav";
+import { BlackFridayTheme } from "@/components/brand";
 
 export default function AppLayout({ children }: LayoutProps<"/">) {
   return (
@@ -10,6 +11,7 @@ export default function AppLayout({ children }: LayoutProps<"/">) {
           Em aparelhos sem essa área (Android, computador), o espaço continua 1.25rem. */}
       <main className="mx-auto max-w-[520px] px-4 pt-[max(1.25rem,calc(env(safe-area-inset-top)+1rem))] pb-32 md:max-w-[960px]">{children}</main>
       {/* A barra lê o endereço da página (para saber a aba ativa), então fica num <Suspense> */}
+      <BlackFridayTheme />
       <Suspense>
         <BottomNav />
       </Suspense>
