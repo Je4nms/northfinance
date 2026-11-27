@@ -11,11 +11,39 @@ export function toBRL(cents: number): string {
   return (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
 
-/** "12,50" ou "12.50" vira 1250. */
+/**
+ * Lê o valor digitado, do jeito brasileiro: ponto separa o milhar e vírgula separa os centavos.
+ * "3.500" → 350000 · "3.500,50" → 350050 · "3500" → 350000 · "0,99" → 99.
+ * Só quando não tem vírgula e o ponto não parece milhar ("12.5", "3500.00", de um texto colado),
+ * o ponto vale como centavos. Valor inválido vira 0.
+ */
 export function parseBRL(text: string): number {
-  const clean = text.replace(/[^\d,.-]/g, "");
-  const normalized = clean.includes(",") ? clean.replace(/\./g, "").replace(",", ".") : clean;
-  return Math.round(Number(normalized) * 100);
+  const clean = text.replace(/[^\d,.]/g, "");
+  let normalized: string;
+  if (clean.includes(",")) normalized = clean.replace(/\./g, "").replace(",", ".");
+  else if (/^\d{1,3}(\.\d{3})+$/.test(clean)) normalized = clean.replace(/\./g, "");
+  else normalized = clean;
+  const value = Math.round(Number(normalized) * 100);
+  return Number.isFinite(value) ? value : 0;
+}
+
+/**
+ * Coloca a pontuação enquanto a pessoa digita: "3500" → "3.500", "3500,5" → "3.500,5".
+ * Aceita só números e uma vírgula (no máximo 2 casas depois dela). O ponto é colocado sozinho.
+ */
+export function formatTyping(text: string): string {
+  const raw = text.replace(/[^\d,]/g, "");
+  const comma = raw.indexOf(",");
+  const intDigits = (comma >= 0 ? raw.slice(0, comma) : raw).replace(/^0+(?=\d)/, "");
+  const decimals = comma >= 0 ? raw.slice(comma + 1).replace(/,/g, "").slice(0, 2) : null;
+  const grouped = intDigits.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  if (decimals === null) return grouped;
+  return `${grouped || "0"},${decimals}`;
+}
+
+/** Centavos para o campo de valor: 350000 → "3.500,00". */
+export function centsToInput(cents: number): string {
+  return formatTyping((cents / 100).toFixed(2).replace(".", ","));
 }
 
 /** Hoje em São Paulo, como data sem hora (meia-noite UTC). */

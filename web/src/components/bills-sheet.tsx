@@ -8,9 +8,10 @@ import { useState, useTransition } from "react";
 import { payBill, type PayState } from "@/app/actions";
 import { CategoryIcon } from "@/components/category-icon";
 import { Sheet } from "@/components/sheet";
+import { MoneyInput } from "@/components/money-input";
 import { categoryName } from "@/lib/categories";
 import { haptic } from "@/lib/haptic";
-import { toBRL } from "@/lib/money";
+import { centsToInput, toBRL } from "@/lib/money";
 
 export type SheetBill = {
   id: number;
@@ -23,7 +24,6 @@ export type SheetBill = {
 
 const TONE_TEXT = { late: "text-expense", today: "text-warning", soon: "text-warning", later: "text-muted" };
 const TONE_DOT = { late: "bg-expense", today: "bg-warning", soon: "bg-warning", later: "bg-muted" };
-const asInput = (cents: number) => (cents / 100).toFixed(2).replace(".", ",");
 
 type Step = { kind: "list" } | { kind: "confirm"; bill: SheetBill } | { kind: "done"; done: NonNullable<PayState["done"]> };
 
@@ -139,10 +139,9 @@ function Confirm({ bill, todayLabel, onBack, onDone }: {
         <span className="text-sm text-muted">Valor pago</span>
         <span className="mt-1 flex items-baseline justify-center gap-1.5 border-b-2 border-primary px-2 pb-1">
           <span className="text-2xl font-bold text-muted">R$</span>
-          <input
+          <MoneyInput
             name="amount"
-            inputMode="decimal"
-            defaultValue={asInput(bill.amountCents)}
+            defaultValue={centsToInput(bill.amountCents)}
             aria-label={`Valor pago da conta ${bill.name}`}
             className="w-44 bg-transparent text-center text-4xl font-extrabold tracking-tight tabular-nums outline-none"
           />

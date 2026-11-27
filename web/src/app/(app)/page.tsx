@@ -6,6 +6,7 @@ import { Suspense } from "react";
 
 import { answerEnjoying, saveGoal, toggleValues } from "@/app/actions";
 import { AnimatedNumber } from "@/components/animated-number";
+import { MoneyInput } from "@/components/money-input";
 import { BillsSheet, type SheetBill } from "@/components/bills-sheet";
 import { SavingsSheet } from "@/components/savings-sheet";
 import { CategoryIcon } from "@/components/category-icon";
@@ -16,7 +17,7 @@ import { Tour } from "@/components/tour";
 import { TransactionList } from "@/components/transaction-list";
 import { categoryColor, categoryName } from "@/lib/categories";
 import * as db from "@/lib/db";
-import { dueLabel, greeting, isoDate, monthName, monthParam, monthRange, parseMonth, shiftMonth, todayInSaoPaulo, toBRL } from "@/lib/money";
+import { centsToInput, dueLabel, greeting, isoDate, monthName, monthParam, monthRange, parseMonth, shiftMonth, todayInSaoPaulo, toBRL } from "@/lib/money";
 import { pushConfigured } from "@/lib/push";
 import { blackFridayOf } from "@/lib/black-friday";
 import { savingsFor } from "@/lib/savings";
@@ -199,11 +200,10 @@ function Goal({ spent, goal, today }: { spent: number; goal: number | null; toda
         {goal ? "Editar limite" : "Definir"}
       </summary>
       <form action={saveGoal} className="mt-3 flex gap-2">
-        <input
+        <MoneyInput
           name="goal"
-          inputMode="decimal"
-          placeholder="Ex.: 1500,00"
-          defaultValue={goal ? (goal / 100).toFixed(2).replace(".", ",") : ""}
+          placeholder="Ex.: 1.500,00"
+          defaultValue={goal ? centsToInput(goal) : ""}
           className="min-w-0 flex-1 rounded-xl border border-line bg-bg px-3 py-2"
         />
         <button className="rounded-xl bg-primary px-4 py-2 font-semibold text-white">Salvar</button>
