@@ -259,3 +259,28 @@ html[data-bf] .nf-glow::before {
     radial-gradient(closest-side, rgb(212 165 55 / var(--glow)), transparent) 10% 0% / 70% 120% no-repeat,
     radial-gradient(closest-side, rgb(120 90 30 / var(--glow)), transparent) 90% 10% / 70% 120% no-repeat;
 }
+
+/* Black Friday: a logo animada (carregamento e entrada) fica preta e dourada, e o selo aparece */
+.nf-bf-only {
+  display: none;
+}
+html[data-bf] .nf-bf-only {
+  display: inline-block;
+}
+html[data-bf] .nf-logo-bg {
+  fill: #16140f;
+}
+html[data-bf] .nf-logo-border {
+  stroke: #d4a537;
+}
+html[data-bf] .nf-logo-ring {
+  stroke: #e8c15a;
+}
+html[data-bf] .nf-logo-mark {
+  fill: #e8c15a;
+}
+html[data-bf] .nf-aurora::before {
+  background:
+    radial-gradient(closest-side, rgb(212 165 55 / var(--glow)), transparent) 15% 10% / 75vmax 75vmax no-repeat,
+    radial-gradient(closest-side, rgb(120 90 30 / var(--glow)), transparent) 85% 90% / 85vmax 85vmax no-repeat;
+}

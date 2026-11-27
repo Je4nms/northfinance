@@ -29,11 +29,13 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="pt-BR" className={`${inter.variable} antialiased`} suppressHydrationWarning>
       <head>
-        {/* Lê as escolhas de acessibilidade salvas no aparelho antes de desenhar a tela */}
+        {/* Antes de desenhar a tela: as escolhas de acessibilidade e se é Black Friday (logo dourada desde o início) */}
         <script
           dangerouslySetInnerHTML={{
             __html:
-              "try{var d=document.documentElement;d.dataset.text=localStorage.getItem('nf-text')||'normal';d.dataset.contrast=localStorage.getItem('nf-contrast')||'normal'}catch(e){}",
+              "try{var d=document.documentElement;d.dataset.text=localStorage.getItem('nf-text')||'normal';d.dataset.contrast=localStorage.getItem('nf-contrast')||'normal'}catch(e){}" +
+              // Black Friday (mesma regra de lib/black-friday.ts): sexta depois da 4ª quinta de novembro até a segunda
+              "try{var t=new Date(new Date().toLocaleDateString('en-CA',{timeZone:'America/Sao_Paulo'})+'T00:00:00Z'),y=t.getUTCFullYear(),w=new Date(Date.UTC(y,10,1)).getUTCDay(),s=Date.UTC(y,10,1+(4-w+7)%7+22),n=Math.round((t-s)/864e5);if(n>=0&&n<=3)document.documentElement.dataset.bf='1'}catch(e){}",
           }}
         />
       </head>
