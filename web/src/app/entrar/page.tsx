@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 
 import { enter } from "@/app/actions";
 import { AccessibilityButton } from "@/components/accessibility";
+import { BlackFridayBadge } from "@/components/loading-logo";
 import { ANIMATED_LOGO } from "@/components/logo-markup";
 import { currentUser } from "@/lib/session";
 
@@ -19,6 +20,7 @@ export default function Page() {
       <div>
         <h1 className="text-4xl tracking-tight"><b className="font-extrabold">North</b>Finance</h1>
         <p className="mt-2 text-muted">O app de finanças mais simples que existe.</p>
+        <div className="mt-3"><BlackFridayBadge /></div>
       </div>
       <Suspense>
         <AlreadyIn />
