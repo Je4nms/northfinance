@@ -8,8 +8,9 @@ import { addGoal, addGoalEntry, deleteGoal, deleteGoalEntry, updateGoal, type Fo
 import { Celebrate } from "@/components/celebrate";
 import { GoalGlyph, GoalIcon, goalColor } from "@/components/goal-icon";
 import { Sheet } from "@/components/sheet";
+import { MoneyInput } from "@/components/money-input";
 import { GOAL_ICONS, type GoalIconName } from "@/lib/goals";
-import { dayLabel, toBRL } from "@/lib/money";
+import { centsToInput, dayLabel, toBRL } from "@/lib/money";
 
 export type GoalView = {
   id: number;
@@ -31,7 +32,6 @@ type Open =
 const INTRO = "nf-metas-intro";
 const short = (cents: number) => toBRL(cents).replace(/,00$/, "");
 const percent = (g: GoalView) => Math.min(100, Math.floor((Math.max(g.savedCents, 0) / g.targetCents) * 100));
-const asInput = (cents: number) => (cents / 100).toFixed(2).replace(".", ",");
 
 export function MetasClient({ ready, hide, today, monthSaved, reserveHint, goals }: {
   ready: boolean; hide: boolean; today: string; monthSaved: number; reserveHint: number | null; goals: GoalView[];
@@ -199,7 +199,7 @@ function Progress({ goal }: { goal: GoalView }) {
 function GoalForm({ goal, reserveHint, onDone }: { goal?: GoalView; reserveHint: number | null; onDone: (r: FormState) => void }) {
   const [name, setName] = useState(goal?.name ?? "");
   const [icon, setIcon] = useState<string>(goal?.icon ?? "outro");
-  const [target, setTarget] = useState(goal ? asInput(goal.targetCents) : "");
+  const [target, setTarget] = useState(goal ? centsToInput(goal.targetCents) : "");
   const save = goal ? updateGoal.bind(null, goal.id) : addGoal;
   const [state, action, pending] = useActionState<FormState, FormData>(async (prev, form) => {
     const result = await save(prev, form);
@@ -232,7 +232,7 @@ function GoalForm({ goal, reserveHint, onDone }: { goal?: GoalView; reserveHint:
         <span className="text-sm text-muted">Quanto você quer juntar?</span>
         <div className="mt-1 flex items-baseline gap-2 border-b-2 border-line pb-1 focus-within:border-primary">
           <span className="text-2xl font-bold text-muted">R$</span>
-          <input name="target" value={target} onChange={(e) => setTarget(e.target.value)} inputMode="decimal" placeholder="0,00" required autoComplete="off"
+          <MoneyInput name="target" value={target} onChange={() => {}} onValueChange={setTarget} placeholder="0,00" required
             className="w-full bg-transparent text-4xl font-extrabold outline-none" />
         </div>
       </label>
@@ -242,7 +242,7 @@ function GoalForm({ goal, reserveHint, onDone }: { goal?: GoalView; reserveHint:
           <GoalGlyph icon="reserva" size={18} />
           <p className="flex-1">
             Ainda não tem uma <b>reserva de emergência</b>? Para você, o ideal é <b>{short(reserveHint)}</b> (6 meses dos seus gastos).{" "}
-            <button type="button" onClick={() => { setName("Reserva de emergência"); setIcon("reserva"); setTarget(asInput(reserveHint)); }}
+            <button type="button" onClick={() => { setName("Reserva de emergência"); setIcon("reserva"); setTarget(centsToInput(reserveHint)); }}
               className="font-semibold text-primary">Usar essa meta</button>
           </p>
         </div>
@@ -286,7 +286,7 @@ function EntryForm({ direction, goals, goalId, today, onDone }: {
         <span className="text-sm text-muted">Valor</span>
         <div className="mt-1 flex items-baseline gap-2 border-b-2 border-line pb-1 focus-within:border-primary">
           <span className="text-2xl font-bold text-muted">R$</span>
-          <input name="amount" inputMode="decimal" placeholder="0,00" required autoComplete="off" className="w-full bg-transparent text-4xl font-extrabold outline-none" />
+          <MoneyInput name="amount" placeholder="0,00" required className="w-full bg-transparent text-4xl font-extrabold outline-none" />
         </div>
       </label>
 

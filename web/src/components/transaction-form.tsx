@@ -5,6 +5,7 @@ import { useActionState, useEffect, useRef, useState } from "react";
 
 import { addBill, addTransaction, deleteBill, deleteRecurring, updateTransaction, type FormState } from "@/app/actions";
 import { CategoryGlyph, CategoryIcon } from "@/components/category-icon";
+import { MoneyInput } from "@/components/money-input";
 import { PushHint } from "@/components/notifications";
 import { categoryName, EXPENSE_CATEGORIES, INCOME_CATEGORIES } from "@/lib/categories";
 import { haptic } from "@/lib/haptic";
@@ -98,7 +99,7 @@ export function TransactionForm({ today, editId, initial, startKind, bills = [],
           <span className="text-sm text-muted">Valor</span>
           <div className="mt-1 flex items-baseline gap-2 border-b-2 border-line pb-1 focus-within:border-primary">
             <span className="text-2xl font-bold text-muted">R$</span>
-            <input name="amount" inputMode="decimal" placeholder="0,00" required autoComplete="off" defaultValue={initial?.amount}
+            <MoneyInput name="amount" placeholder="0,00" required defaultValue={initial?.amount}
               className="w-full bg-transparent text-4xl font-extrabold outline-none" />
           </div>
         </label>

@@ -9,7 +9,7 @@ import { LoadingLogo } from "@/components/loading-logo";
 import { TransactionForm } from "@/components/transaction-form";
 import * as db from "@/lib/db";
 import { favoriteExpenseCategories } from "@/lib/categories";
-import { isoDate, shiftMonth, todayInSaoPaulo } from "@/lib/money";
+import { centsToInput, isoDate, shiftMonth, todayInSaoPaulo } from "@/lib/money";
 import { currentMember } from "@/lib/session";
 
 export default function Page({ params }: PageProps<"/lancamento/[id]">) {
@@ -42,7 +42,7 @@ async function Edit({ params }: { params: PageProps<"/lancamento/[id]">["params"
         favorites={favoriteExpenseCategories(mostUsed)}
         initial={{
           kind: t.kind,
-          amount: (t.amountCents / 100).toFixed(2).replace(".", ","),
+          amount: centsToInput(t.amountCents),
           category: t.category,
           description: t.description ?? "",
           date: isoDate(t.occurredOn),
