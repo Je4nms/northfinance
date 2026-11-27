@@ -284,3 +284,13 @@ html[data-bf] .nf-aurora::before {
     radial-gradient(closest-side, rgb(212 165 55 / var(--glow)), transparent) 15% 10% / 75vmax 75vmax no-repeat,
     radial-gradient(closest-side, rgb(120 90 30 / var(--glow)), transparent) 85% 90% / 85vmax 85vmax no-repeat;
 }
+
+/* Anotar: o "botão" do seletor desliza até a opção escolhida */
+.nf-seg {
+  transition: left 0.28s cubic-bezier(0.2, 0.9, 0.3, 1);
+}
+@media (prefers-reduced-motion: reduce) {
+  .nf-seg {
+    transition: none;
+  }
+}
