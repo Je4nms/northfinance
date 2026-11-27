@@ -1,6 +1,6 @@
 "use client";
 // Formulário de lançamento: o mesmo para Anotar (novo) e Editar (já existente)
-import { CalendarClock, CalendarDays, Check, ChevronDown, ChevronUp, Repeat, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowUp, CalendarClock, CalendarDays, Check, ChevronDown, ChevronUp, Info, Repeat, Trash2, type LucideIcon } from "lucide-react";
 import { useActionState, useEffect, useRef, useState } from "react";
 
 import { addBill, addTransaction, deleteBill, deleteRecurring, updateTransaction, type FormState } from "@/app/actions";
@@ -16,15 +16,17 @@ type Kind = "expense" | "income" | "bill";
 export type BillItem = { id: number; name: string; amountCents: number; category: string; dueDay: number };
 export type RecurringItem = { id: number; kind: "expense" | "income"; name: string; amountCents: number; category: string; dayOfMonth: number };
 
-const KINDS: { value: Kind; label: string }[] = [
-  { value: "expense", label: "Gasto" },
-  { value: "income", label: "Ganho" },
-  { value: "bill", label: "Conta" },
+// Cada opção do Anotar: ícone e cor (só no ícone e na linha do valor), a frase que explica,
+// o exemplo do campo e o texto do botão. Assim a pessoa entende só de bater o olho.
+const KINDS: { value: Kind; label: string; icon: LucideIcon; color: string; hint: string; example: string; button: string }[] = [
+  { value: "expense", label: "Gasto", icon: ArrowDown, color: "var(--expense)", hint: "Dinheiro que já saiu da sua conta.", example: "Ex.: feira do mês", button: "Salvar gasto" },
+  { value: "income", label: "Ganho", icon: ArrowUp, color: "var(--income)", hint: "Dinheiro que entrou: salário, Pix, uma venda.", example: "Ex.: salário de novembro", button: "Salvar ganho" },
+  { value: "bill", label: "A pagar", icon: CalendarClock, color: "var(--warning)", hint: "Conta que vence todo mês. O app te avisa antes e você confirma quando pagar.", example: "", button: "Salvar conta" },
 ];
 
 /**
- * Formulário do Anotar (Gasto, Ganho ou Conta a vencer) e do Editar (só Gasto ou Ganho).
- * "Conta" guarda uma conta que vence todo mês: o app avisa antes, e você confirma quando pagar.
+ * Formulário do Anotar (Gasto, Ganho ou A pagar) e do Editar (só Gasto ou Ganho).
+ * "A pagar" guarda uma conta que vence todo mês: o app avisa antes, e você confirma quando pagar.
  */
 export function TransactionForm({ today, editId, initial, startKind, bills = [], recurring = [], favorites, pushKey }: {
   today: string; editId?: number; initial?: Initial; startKind?: Kind; bills?: BillItem[]; recurring?: RecurringItem[];
@@ -74,30 +76,42 @@ export function TransactionForm({ today, editId, initial, startKind, bills = [],
   const categories = allCategories ? all : top;
   const fixed = recurring.filter((r) => r.kind === kind);
   const kinds = editId ? KINDS.filter((k) => k.value !== "bill") : KINDS;
+  const current = KINDS.find((k) => k.value === kind)!;
+  const index = kinds.findIndex((k) => k.value === kind);
+  const choose = (k: Kind) => { setKind(k); setAllCategories(false); setKept(null); };
 
   return (
     <>
       <form id="transaction-form" action={action} className="space-y-5">
         <input type="hidden" name="kind" value={kind} />
-        <div className={`grid rounded-2xl bg-card p-1 ${kinds.length === 3 ? "grid-cols-3" : "grid-cols-2"}`}>
-          {kinds.map((k) => (
-            <button key={k.value} type="button" onClick={() => { setKind(k.value); setAllCategories(false); setKept(null); }} aria-pressed={kind === k.value}
-              className={`rounded-xl py-2.5 font-semibold ${kind === k.value ? "bg-bg shadow-sm" : "text-muted"}`}>
-              {k.label}
-            </button>
-          ))}
-        </div>
-
-        {isBill && (
-          <p className="flex gap-2.5 rounded-2xl bg-primary/10 px-4 py-3 text-sm">
-            <CalendarClock size={18} className="mt-0.5 flex-none text-primary" />
-            Contas que vencem todo mês, como luz e internet. O app avisa 3 dias antes e no dia, e você só confirma quando pagar.
+        <div>
+          {/* Seletor com um "botão" que desliza até a opção escolhida; a cor fica só no ícone dela */}
+          <div className={`relative grid rounded-2xl border border-line bg-card p-1 ${kinds.length === 3 ? "grid-cols-3" : "grid-cols-2"}`}>
+            <span aria-hidden className="nf-seg absolute top-1 bottom-1 rounded-xl bg-bg shadow-sm ring-1 ring-line"
+              style={{ width: `calc((100% - 0.5rem) / ${kinds.length})`, left: `calc(0.25rem + ${index} * (100% - 0.5rem) / ${kinds.length})` }} />
+            {kinds.map((k) => {
+              const on = kind === k.value;
+              const Icon = k.icon;
+              return (
+                <button key={k.value} type="button" onClick={() => choose(k.value)} aria-pressed={on}
+                  className={`relative flex items-center justify-center gap-1.5 rounded-xl py-2.5 font-semibold transition-colors ${on ? "text-fg" : "text-muted"}`}>
+                  <span className="flex h-6 w-6 items-center justify-center rounded-lg transition-colors"
+                    style={on ? { color: k.color, background: `color-mix(in srgb, ${k.color} 16%, transparent)` } : undefined}>
+                    <Icon size={15} strokeWidth={2.6} />
+                  </span>
+                  {k.label}
+                </button>
+              );
+            })}
+          </div>
+          <p key={kind} className="nf-fade-in mt-2.5 flex gap-2 px-1 text-sm text-muted">
+            <Info size={16} className="mt-0.5 flex-none" /> {current.hint}
           </p>
-        )}
+        </div>
 
         <label className="block">
           <span className="text-sm text-muted">Valor</span>
-          <div className="mt-1 flex items-baseline gap-2 border-b-2 border-line pb-1 focus-within:border-primary">
+          <div className="mt-1 flex items-baseline gap-2 border-b-2 pb-1 transition-colors" style={{ borderColor: current.color }}>
             <span className="text-2xl font-bold text-muted">R$</span>
             <MoneyInput name="amount" placeholder="0,00" required defaultValue={initial?.amount}
               className="w-full bg-transparent text-4xl font-extrabold outline-none" />
@@ -153,7 +167,7 @@ export function TransactionForm({ today, editId, initial, startKind, bills = [],
           <>
             <label className="block">
               <span className="text-sm text-muted">Descrição (opcional)</span>
-              <input name="description" maxLength={100} placeholder="Ex.: feira do mês" defaultValue={initial?.description}
+              <input name="description" maxLength={100} placeholder={current.example} defaultValue={initial?.description}
                 className="mt-1 w-full rounded-2xl bg-card px-4 py-3 outline-none" />
             </label>
 
@@ -190,7 +204,10 @@ export function TransactionForm({ today, editId, initial, startKind, bills = [],
             <Repeat size={20} className="flex-none text-primary" />
             <span className="flex-1">
               <span className="block font-semibold">Repetir todo mês</span>
-              <span className="text-sm text-muted">Para valores que não mudam, como assinaturas: o app lança sozinho no mesmo dia.</span>
+              <span className="text-sm text-muted">
+                Para valores fixos cobrados sozinhos, como assinaturas. Para luz, água ou boleto, use{" "}
+                <button type="button" className="font-semibold text-primary underline" onClick={(e) => { e.preventDefault(); choose("bill"); }}>A pagar</button>.
+              </span>
             </span>
             <input type="checkbox" name="repeat" className="h-5 w-5 accent-[var(--primary)]" />
           </label>
@@ -200,7 +217,7 @@ export function TransactionForm({ today, editId, initial, startKind, bills = [],
         {state.ok && !celebrate && <p className="font-semibold text-income">{state.ok}</p>}
 
         <button disabled={pending} className="w-full rounded-2xl bg-primary py-4 text-lg font-bold text-white transition-transform active:scale-[0.98] disabled:opacity-60">
-          {pending ? "Salvando..." : editId ? "Salvar alterações" : isBill ? "Salvar conta" : "Salvar"}
+          {pending ? "Salvando..." : editId ? "Salvar alterações" : current.button}
         </button>
       </form>
 
