@@ -252,3 +252,10 @@ html[data-contrast="alto"] {
     animation: none;
   }
 }
+
+/* Black Friday (sexta a segunda): o brilho do topo fica dourado e escuro. Liga sozinho pela data. */
+html[data-bf] .nf-glow::before {
+  background:
+    radial-gradient(closest-side, rgb(212 165 55 / var(--glow)), transparent) 10% 0% / 70% 120% no-repeat,
+    radial-gradient(closest-side, rgb(120 90 30 / var(--glow)), transparent) 90% 10% / 70% 120% no-repeat;
+}

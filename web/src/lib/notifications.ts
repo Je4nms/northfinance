@@ -1,6 +1,7 @@
 // Notificações: qual aviso cada pessoa recebe hoje (no máximo um por dia).
 // A decisão (`pickNotification`) não acessa o banco: recebe os dados prontos, então dá para testar com qualquer data.
 import * as db from "@/lib/db";
+import { blackFridayOf } from "@/lib/black-friday";
 import { shiftMonth } from "@/lib/money";
 import { currentCycle } from "@/lib/payday";
 import { paydayRuleFor } from "@/lib/savings";
@@ -8,7 +9,7 @@ import { paydayRuleFor } from "@/lib/savings";
 const DAY = 86_400_000;
 const MONTHS = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
 
-export type Notification = { kind: "bills" | "payday" | "monthly" | "newYear" | "weekly" | "inactive"; title: string; body: string; url: string };
+export type Notification = { kind: "bills" | "blackFriday" | "payday" | "monthly" | "newYear" | "weekly" | "inactive"; title: string; body: string; url: string };
 
 export type DayContext = {
   today: Date;
@@ -40,6 +41,12 @@ export function pickNotification(c: DayContext): Notification | null {
         url: "/",
       };
     }
+  }
+
+  // Black Friday: um aviso só, no sábado
+  const bf = blackFridayOf(today);
+  if (bf && daysBetween(bf, today) === 1) {
+    return { kind: "blackFriday", title: "Black Friday", body: "Veja quanto você já gastou antes da próxima compra.", url: "/" };
   }
 
   // 2. Três dias antes do salário

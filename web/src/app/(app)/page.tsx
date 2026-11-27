@@ -1,5 +1,5 @@
 // Início: saudação, saldo do mês, limite do mês, para onde foi o dinheiro e últimos lançamentos
-import { ChevronLeft, ChevronRight, Eye, EyeOff, Target, TrendingDown, TrendingUp } from "lucide-react";
+import { ChevronLeft, ChevronRight, Eye, EyeOff, ShoppingBag, Target, TrendingDown, TrendingUp } from "lucide-react";
 import { cookies } from "next/headers";
 import Link from "next/link";
 import { Suspense } from "react";
@@ -18,6 +18,7 @@ import { categoryColor, categoryName } from "@/lib/categories";
 import * as db from "@/lib/db";
 import { dueLabel, greeting, isoDate, monthName, monthParam, monthRange, parseMonth, shiftMonth, todayInSaoPaulo, toBRL } from "@/lib/money";
 import { pushConfigured } from "@/lib/push";
+import { blackFridayOf } from "@/lib/black-friday";
 import { savingsFor } from "@/lib/savings";
 import { currentMember } from "@/lib/session";
 
@@ -67,6 +68,9 @@ async function Home({ searchParams }: { searchParams: PageProps<"/">["searchPara
   // Embaixo do saldo aparece no máximo UMA linha: conta vencendo tem prioridade sobre "Sobrou dinheiro?"
   const sheetBills = bills.map((b) => toSheetBill(b, today));
   const billDue = sheetBills.some((b) => b.tone !== "later");
+  // Black Friday (sexta a segunda): quanto já foi gasto desde sexta. Some sozinho na terça.
+  const bfStart = isCurrentMonth ? blackFridayOf(today) : null;
+  const bfSpent = bfStart && !billDue ? await db.expensesBetween(member.email, bfStart, new Date(today.getTime() + 86_400_000)) : null;
   // O que foi guardado nas Metas não é gasto, mas também não está mais livre
   const balance = totals.income - totals.expense - saved;
 
@@ -125,7 +129,8 @@ async function Home({ searchParams }: { searchParams: PageProps<"/">["searchPara
           </section>
 
           {bills.length > 0 && <BillsSheet bills={sheetBills} hide={hide} todayLabel={isoDate(today).slice(8, 10) + "/" + isoDate(today).slice(5, 7)} />}
-          {savings && <SavingsSheet savings={{ ...savings, visible: savings.visible && !billDue }} hide={hide} />}
+          {bfStart && bfSpent !== null && <BlackFriday spent={bfSpent} sinceToday={bfStart.getTime() === today.getTime()} fmt={fmt} />}
+          {savings && <SavingsSheet savings={{ ...savings, visible: savings.visible && !billDue && bfSpent === null }} hide={hide} />}
 
           <div className="grid grid-cols-2 gap-2.5">
             <div className="rounded-3xl bg-card p-4">
@@ -305,4 +310,22 @@ function toSheetBill(b: db.Bill, today: Date): SheetBill {
   const tone = days < 0 ? "late" : days === 0 ? "today" : days <= 3 ? "soon" : "later";
   const label = tone === "later" ? `Dia ${b.nextDue.getUTCDate()}` : dueLabel(b.nextDue, today).replace(/^./, (c) => c.toUpperCase());
   return { id: b.id, name: b.name, amountCents: b.amountCents, category: b.category, label, tone };
+}
+
+/** Cartão da Black Friday: quanto já gastou desde sexta e duas perguntas antes de comprar. */
+function BlackFriday({ spent, sinceToday, fmt }: { spent: number; sinceToday: boolean; fmt: (cents: number) => string }) {
+  return (
+    <section className="flex gap-3 rounded-2xl border border-[#d4a537]/40 bg-card px-4 py-3">
+      <ShoppingBag size={20} className="mt-0.5 flex-none text-[#d4a537]" />
+      <div className="min-w-0 flex-1 text-sm">
+        <p className="font-bold">Black Friday</p>
+        <p>
+          {spent > 0
+            ? <>Você gastou <b className="text-expense">{fmt(spent)}</b> {sinceToday ? "hoje" : "desde sexta"}.</>
+            : <>Você ainda não gastou nada {sinceToday ? "hoje" : "desde sexta"}.</>}
+        </p>
+        <p className="text-muted">Antes de comprar: precisa mesmo? Cabe no limite do mês?</p>
+      </div>
+    </section>
+  );
 }
